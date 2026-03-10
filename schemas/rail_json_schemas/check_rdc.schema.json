@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jhbi/schemas/rail/v2/check_rdc_v2.schema.json",
+  "title": "Check / RDC Rail Details v2",
+  "description": "Rail-specific details for paper check clearing and Remote Deposit Capture (RDC). Covers both teller-deposited checks and mobile/scanner RDC.",
+  "version": "v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rail_schema_version",
+    "rail_type",
+    "check_subtype"
+  ],
+  "properties": {
+    "rail_schema_version": { "const": "v2" },
+    "rail_type": { "const": "CHECK_RDC" },
+
+    "check_subtype": {
+      "type": "string",
+      "enum": ["PAPER_CHECK", "RDC_MOBILE", "RDC_SCANNER", "TELLER_CAPTURE"],
+      "description": "How the check was captured and presented"
+    },
+
+    "check_number": {
+      "type": ["string", "null"],
+      "maxLength": 10,
+      "description": "Check serial number from MICR line"
+    },
+    "micr_routing_number": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "Bank routing number from MICR line"
+    },
+    "micr_account_token": {
+      "type": ["string", "null"],
+      "description": "Tokenized account number from MICR line"
+    },
+    "micr_amount": {
+      "type": ["number", "null"],
+      "description": "Amount as encoded in MICR (if present)"
+    },
+    "micr_verification_status": {
+      "type": ["string", "null"],
+      "enum": ["VERIFIED", "FAILED", "NOT_PRESENT", "PARTIAL", null]
+    },
+    "micr_raw_data_token": {
+      "type": ["string", "null"],
+      "description": "Token for the full raw MICR line string (contains sensitive data)"
+    },
+
+    "check_date": {
+      "type": ["string", "null"],
+      "format": "date",
+      "description": "Date written on the face of the check"
+    },
+    "payee_name_token": {
+      "type": ["string", "null"],
+      "description": "Tokenized payee name as written on check"
+    },
+    "memo_line": {
+      "type": ["string", "null"],
+      "maxLength": 128,
+      "description": "Memo / for line on check (non-sensitive)"
+    },
+
+    "rdc_details": {
+      "type": ["object", "null"],
+      "description": "RDC-specific fields (populated for RDC_MOBILE, RDC_SCANNER, TELLER_CAPTURE)",
+      "properties": {
+        "batch_id": {
+          "type": ["string", "null"],
+          "maxLength": 64
+        },
+        "sequence_number": {
+          "type": ["string", "null"]
+        },
+        "deposit_account_token": {
+          "type": ["string", "null"],
+          "description": "Token for the deposit target account"
+        },
+        "check_front_image_id": {
+          "type": ["string", "null"],
+          "description": "Reference to front-of-check image in document store"
+        },
+        "check_back_image_id": {
+          "type": ["string", "null"],
+          "description": "Reference to back-of-check image in document store"
+        },
+        "image_quality_score": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "iqv_result": {
+          "type": ["string", "null"],
+          "enum": ["PASS", "WARN", "FAIL", null],
+          "description": "Image Quality Validation result"
+        },
+        "exception_codes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "IQV exception codes returned"
+        },
+        "substitute_check_id": {
+          "type": ["string", "null"],
+          "description": "IRD (Image Replacement Document) identifier if created"
+        }
+      }
+    },
+
+    "clearing_details": {
+      "type": ["object", "null"],
+      "description": "Check 21 / FRB clearing details",
+      "properties": {
+        "clearing_house": {
+          "type": ["string", "null"],
+          "enum": ["FRB", "SVPCO", "DIRECT", null]
+        },
+        "presentment_routing": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9]{9}$"
+        },
+        "presentment_date": {
+          "type": ["string", "null"],
+          "format": "date"
+        },
+        "truncation_status": {
+          "type": ["string", "null"],
+          "enum": ["TRUNCATED", "NOT_TRUNCATED", "SUBSTITUTE_CHECK", null]
+        }
+      }
+    },
+
+    "return_details": {
+      "type": ["object", "null"],
+      "properties": {
+        "return_reason_code": {
+          "type": "string",
+          "description": "Return reason (e.g. NSF, STOP_PAYMENT, ACCOUNT_CLOSED)"
+        },
+        "return_date": { "type": "string", "format": "date" },
+        "re_presentment_count": {
+          "type": ["integer", "null"],
+          "description": "Number of times this check has been re-presented"
+        }
+      }
+    },
+
+    "originator_fi_routing": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "Paying bank routing number"
+    },
+    "depositing_fi_routing": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "Depositing bank routing number"
+    },
+
+    "is_on_us": {
+      "type": "boolean",
+      "description": "True when the check is drawn on an account at the same FI where it is deposited"
+    },
+    "on_us_settlement_type": {
+      "type": ["string", "null"],
+      "enum": ["BOOK_TRANSFER", "INTERNAL_CHECK", null]
+    }
+  }
+}

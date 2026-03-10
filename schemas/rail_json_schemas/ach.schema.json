@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jhbi/schemas/rail/v2/ach_v2.schema.json",
+  "title": "ACH Rail Details v2",
+  "description": "Rail-specific details for ACH (Automated Clearing House) transactions. Stored in unified_transactions.rail_details_json.",
+  "version": "v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rail_schema_version",
+    "rail_type",
+    "entry_class_code",
+    "transaction_type",
+    "trace_number"
+  ],
+  "properties": {
+    "rail_schema_version": {
+      "const": "v2",
+      "description": "Schema version for this rail extension"
+    },
+    "rail_type": {
+      "const": "ACH",
+      "description": "Payment rail identifier"
+    },
+
+    "entry_class_code": {
+      "type": "string",
+      "enum": ["PPD", "CCD", "WEB", "TEL", "CTX", "IAT", "ARC", "BOC", "POP", "POS", "RCK", "XCK", "COR"],
+      "description": "NACHA Standard Entry Class (SEC) code"
+    },
+    "transaction_type": {
+      "type": "string",
+      "enum": ["CREDIT", "DEBIT"],
+      "description": "Whether this is a credit (push) or debit (pull) entry"
+    },
+    "trace_number": {
+      "type": "string",
+      "pattern": "^[0-9]{15}$",
+      "description": "NACHA 15-digit trace number assigned by ODFI"
+    },
+    "batch_number": {
+      "type": ["string", "null"],
+      "maxLength": 7,
+      "description": "ACH batch number within the file"
+    },
+    "file_id": {
+      "type": ["string", "null"],
+      "maxLength": 128,
+      "description": "ACH file identifier from source system"
+    },
+    "company_id": {
+      "type": ["string", "null"],
+      "maxLength": 10,
+      "description": "NACHA company ID (IRS EIN or assigned ID)"
+    },
+    "company_name": {
+      "type": ["string", "null"],
+      "maxLength": 16,
+      "description": "Company name as it appears in the ACH batch header (non-sensitive)"
+    },
+    "company_entry_description": {
+      "type": ["string", "null"],
+      "maxLength": 20,
+      "description": "Free-form description in batch header (e.g. PAYROLL, RENT)"
+    },
+    "company_discretionary_data": {
+      "type": ["string", "null"],
+      "maxLength": 20
+    },
+    "individual_id": {
+      "type": ["string", "null"],
+      "maxLength": 22,
+      "description": "Individual ID or account number assigned by originator (may be tokenized)"
+    },
+    "same_day_flag": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if submitted as Same-Day ACH"
+    },
+    "addenda_record_indicator": {
+      "type": "boolean",
+      "default": false
+    },
+    "addenda_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sequence_number": { "type": "integer" },
+          "addenda_type_code": {
+            "type": "string",
+            "enum": ["02", "05", "98", "99"]
+          },
+          "payment_related_information": {
+            "type": ["string", "null"],
+            "maxLength": 80
+          }
+        }
+      },
+      "description": "Addenda records attached to this entry"
+    },
+
+    "return_details": {
+      "type": ["object", "null"],
+      "description": "Populated when this entry is a return or NOC",
+      "properties": {
+        "return_reason_code": {
+          "type": "string",
+          "pattern": "^R[0-9]{2}$",
+          "description": "NACHA return code e.g. R01, R02"
+        },
+        "return_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "original_trace_number": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9]{15}$"
+        },
+        "return_settlement_date": {
+          "type": ["string", "null"],
+          "format": "date"
+        },
+        "dishonored_return_code": {
+          "type": ["string", "null"],
+          "pattern": "^R[0-9]{2}$"
+        }
+      },
+      "required": ["return_reason_code", "return_date"]
+    },
+
+    "noc_details": {
+      "type": ["object", "null"],
+      "description": "Notification of Change (NOC) details",
+      "properties": {
+        "noc_code": {
+          "type": "string",
+          "pattern": "^C[0-9]{2}$"
+        },
+        "corrected_data": { "type": "string" }
+      }
+    },
+
+    "iat_details": {
+      "type": ["object", "null"],
+      "description": "International ACH Transaction (IAT) specific fields",
+      "properties": {
+        "foreign_exchange_indicator": {
+          "type": "string",
+          "enum": ["FV", "VF", "FF"]
+        },
+        "foreign_exchange_reference_indicator": {
+          "type": ["integer", "null"]
+        },
+        "foreign_exchange_reference": {
+          "type": ["string", "null"],
+          "maxLength": 15
+        },
+        "foreign_routing_number": {
+          "type": ["string", "null"]
+        },
+        "foreign_correspondent_bank_name": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+
+    "originator_fi_routing": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "ODFI (Originating Depository Financial Institution) routing number"
+    },
+    "receiver_fi_routing": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "RDFI (Receiving Depository Financial Institution) routing number"
+    },
+    "settlement_routing": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "Settlement bank routing number"
+    },
+
+    "is_on_us": {
+      "type": "boolean",
+      "description": "True when both ODFI and RDFI are the same FI (on-us ACH)"
+    },
+    "on_us_settlement_type": {
+      "type": ["string", "null"],
+      "enum": ["BOOK_TRANSFER", "INTERNAL_ACH", null],
+      "description": "For on-us transactions, indicates how settlement is handled internally"
+    }
+  }
+}

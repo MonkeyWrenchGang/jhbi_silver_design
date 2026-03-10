@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jhbi/schemas/rail/v2/fednow_v2.schema.json",
+  "title": "FedNow Rail Details v2",
+  "description": "Rail-specific details for the Federal Reserve FedNow instant payment service. ISO 20022-based, launched 2023, 24/7/365 real-time settlement.",
+  "version": "v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rail_schema_version",
+    "rail_type",
+    "transaction_subtype",
+    "fednow_transaction_id"
+  ],
+  "properties": {
+    "rail_schema_version": { "const": "v2" },
+    "rail_type": { "const": "FEDNOW" },
+
+    "transaction_subtype": {
+      "type": "string",
+      "enum": [
+        "CREDIT_TRANSFER",
+        "REQUEST_FOR_PAYMENT",
+        "REQUEST_FOR_PAYMENT_RESPONSE",
+        "PAYMENT_STATUS_REPORT",
+        "RETURN",
+        "LIQUIDITY_MANAGEMENT_TRANSFER"
+      ]
+    },
+
+    "fednow_transaction_id": {
+      "type": "string",
+      "maxLength": 36,
+      "description": "Fed-assigned unique message ID"
+    },
+    "end_to_end_id": {
+      "type": ["string", "null"],
+      "maxLength": 35,
+      "description": "End-to-end identifier from originator (flows through unmodified)"
+    },
+    "instruction_id": {
+      "type": ["string", "null"],
+      "maxLength": 35
+    },
+    "uetr": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "ISO 20022 UETR for cross-network tracking"
+    },
+
+    "instructing_agent_routing": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "Sending FI's Fed routing number"
+    },
+    "instructing_agent_name": {
+      "type": ["string", "null"],
+      "maxLength": 128
+    },
+    "instructed_agent_routing": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "Receiving FI's Fed routing number"
+    },
+    "instructed_agent_name": {
+      "type": ["string", "null"],
+      "maxLength": 128
+    },
+
+    "requested_execution_date": {
+      "type": ["string", "null"],
+      "format": "date"
+    },
+    "interbank_settlement_date": {
+      "type": ["string", "null"],
+      "format": "date"
+    },
+    "interbank_settlement_amount": {
+      "type": ["number", "null"]
+    },
+
+    "remittance_information": {
+      "type": ["string", "null"],
+      "maxLength": 140
+    },
+    "purpose_code": {
+      "type": ["string", "null"],
+      "maxLength": 4,
+      "description": "ISO 20022 purpose code"
+    },
+
+    "fednow_status": {
+      "type": ["string", "null"],
+      "enum": ["RCVD", "ACCP", "ACWC", "RJCT", "PDNG", "ACSC", null],
+      "description": "FedNow ISO 20022 payment status code"
+    },
+
+    "ultimate_debtor_account_token": {
+      "type": ["string", "null"],
+      "description": "Token for ultimate debtor if different from instructing party"
+    },
+    "ultimate_creditor_account_token": {
+      "type": ["string", "null"],
+      "description": "Token for ultimate creditor if different from instructed party"
+    },
+
+    "return_details": {
+      "type": ["object", "null"],
+      "properties": {
+        "return_reason_code": {
+          "type": "string",
+          "description": "ISO 20022 return reason (e.g. AC04, AG01, NARR)"
+        },
+        "return_reason_description": { "type": ["string", "null"] },
+        "original_fednow_transaction_id": { "type": ["string", "null"] },
+        "return_ts": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "request_for_payment": {
+      "type": ["object", "null"],
+      "properties": {
+        "rfp_id": { "type": "string" },
+        "rfp_status": {
+          "type": "string",
+          "enum": ["OPEN", "FULFILLED", "REJECTED", "CANCELLED", "EXPIRED"]
+        },
+        "rfp_expiry_date": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+
+    "is_on_us": {
+      "type": "boolean",
+      "description": "True when sender and receiver are both at the same FI"
+    }
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jhbi/schemas/rail/v2/zelle_v2.schema.json",
+  "title": "Zelle Rail Details v2",
+  "description": "Rail-specific details for Zelle P2P and small-business payments. Zelle uses alias-based (email/phone) identity routing between participating FIs.",
+  "version": "v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rail_schema_version",
+    "rail_type",
+    "zelle_reference_id",
+    "transaction_subtype"
+  ],
+  "properties": {
+    "rail_schema_version": { "const": "v2" },
+    "rail_type": { "const": "ZELLE" },
+
+    "zelle_reference_id": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "Zelle network-assigned reference ID"
+    },
+    "network_transaction_id": {
+      "type": ["string", "null"],
+      "maxLength": 64,
+      "description": "Early Warning Services (EWS) network transaction ID"
+    },
+
+    "transaction_subtype": {
+      "type": "string",
+      "enum": ["SEND_MONEY", "REQUEST_MONEY", "REQUEST_FULFILLMENT", "CANCELLATION", "REFUND"],
+      "description": "Zelle payment type"
+    },
+
+    "originator_proxy_type": {
+      "type": ["string", "null"],
+      "enum": ["EMAIL", "PHONE", "ZELLE_ALIAS", null],
+      "description": "Type of alias used by the sender to identify themselves"
+    },
+    "originator_proxy_token": {
+      "type": ["string", "null"],
+      "description": "Tokenized alias value (email or phone) — never raw PII"
+    },
+    "originator_fi_routing": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "Routing number of sender's FI"
+    },
+    "originator_fi_name": {
+      "type": ["string", "null"],
+      "maxLength": 128
+    },
+
+    "beneficiary_proxy_type": {
+      "type": ["string", "null"],
+      "enum": ["EMAIL", "PHONE", "ZELLE_ALIAS", null],
+      "description": "Type of alias used to identify the recipient"
+    },
+    "beneficiary_proxy_token": {
+      "type": ["string", "null"],
+      "description": "Tokenized alias value for recipient"
+    },
+    "beneficiary_fi_routing": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "Routing number of recipient's FI"
+    },
+    "beneficiary_fi_name": {
+      "type": ["string", "null"],
+      "maxLength": 128
+    },
+
+    "memo": {
+      "type": ["string", "null"],
+      "maxLength": 255,
+      "description": "User-provided memo / payment note"
+    },
+    "request_for_payment_id": {
+      "type": ["string", "null"],
+      "description": "If this payment fulfills a Request for Payment, the RFP ID"
+    },
+    "request_for_payment_status": {
+      "type": ["string", "null"],
+      "enum": ["OPEN", "FULFILLED", "CANCELLED", "EXPIRED", null]
+    },
+
+    "enrollment_status": {
+      "type": ["string", "null"],
+      "enum": ["ENROLLED", "NOT_ENROLLED", "PENDING", null],
+      "description": "Recipient enrollment status at time of transaction"
+    },
+    "payment_expiry_date": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "When a pending Zelle payment expires if recipient not enrolled"
+    },
+
+    "is_on_us": {
+      "type": "boolean",
+      "description": "True when sender and recipient are both customers of the same FI"
+    },
+    "on_us_settlement_type": {
+      "type": ["string", "null"],
+      "enum": ["BOOK_TRANSFER", "INTERNAL_ZELLE", null]
+    }
+  }
+}

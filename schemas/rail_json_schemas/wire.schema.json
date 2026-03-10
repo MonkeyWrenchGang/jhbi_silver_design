@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jhbi/schemas/rail/v2/wire_v2.schema.json",
+  "title": "Wire Transfer Rail Details v2",
+  "description": "Rail-specific details for Fedwire and SWIFT wire transfers. Supports domestic (Fedwire) and international (SWIFT/CHIPS) wires.",
+  "version": "v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rail_schema_version",
+    "rail_type",
+    "wire_subtype",
+    "imad"
+  ],
+  "properties": {
+    "rail_schema_version": { "const": "v2" },
+    "rail_type": { "const": "WIRE" },
+
+    "wire_subtype": {
+      "type": "string",
+      "enum": ["FEDWIRE_DOMESTIC", "SWIFT_INTERNATIONAL", "CHIPS"],
+      "description": "Wire network used"
+    },
+
+    "imad": {
+      "type": ["string", "null"],
+      "maxLength": 22,
+      "description": "Input Message Accountability Data — Fedwire unique reference assigned by sending FI"
+    },
+    "omad": {
+      "type": ["string", "null"],
+      "maxLength": 22,
+      "description": "Output Message Accountability Data — assigned by Fedwire"
+    },
+    "fed_reference_number": {
+      "type": ["string", "null"],
+      "maxLength": 30,
+      "description": "Federal Reserve wire reference number"
+    },
+    "swift_uetr": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "SWIFT Universal End-to-End Transaction Reference (UUID v4 format)"
+    },
+    "chips_sequence_number": {
+      "type": ["string", "null"],
+      "description": "CHIPS network sequence number (CHIPS participants only)"
+    },
+
+    "originator_fi_routing": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "Sending FI ABA routing number"
+    },
+    "originator_fi_name": {
+      "type": ["string", "null"],
+      "maxLength": 128
+    },
+    "originator_fi_swift_bic": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$",
+      "description": "BIC/SWIFT code of sending FI"
+    },
+
+    "beneficiary_fi_routing": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "Receiving FI ABA routing number"
+    },
+    "beneficiary_fi_name": {
+      "type": ["string", "null"],
+      "maxLength": 128
+    },
+    "beneficiary_fi_swift_bic": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$"
+    },
+
+    "intermediary_fi_routing": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "Intermediary bank ABA (if present)"
+    },
+    "intermediary_fi_name": {
+      "type": ["string", "null"],
+      "maxLength": 128
+    },
+
+    "sender_to_receiver_information": {
+      "type": ["string", "null"],
+      "maxLength": 210,
+      "description": "Free-text remittance info passed from sender to receiver"
+    },
+    "originator_to_beneficiary_information": {
+      "type": ["string", "null"],
+      "maxLength": 140
+    },
+    "business_function_code": {
+      "type": ["string", "null"],
+      "enum": ["CTR", "DEP", "DRW", "FFR", "SVC", "SUR", null],
+      "description": "Fedwire business function code"
+    },
+
+    "charges_borne_by": {
+      "type": ["string", "null"],
+      "enum": ["SENDER", "RECEIVER", "SHARED", null],
+      "description": "Who bears wire fees (OUR / BEN / SHA in SWIFT terminology)"
+    },
+
+    "foreign_exchange": {
+      "type": ["object", "null"],
+      "description": "Present for international wires with FX conversion",
+      "properties": {
+        "exchange_rate": { "type": "number", "minimum": 0 },
+        "original_currency_code": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "original_amount": { "type": "number", "minimum": 0 },
+        "fx_reference": { "type": ["string", "null"] }
+      },
+      "required": ["exchange_rate", "original_currency_code", "original_amount"]
+    },
+
+    "purpose_code": {
+      "type": ["string", "null"],
+      "maxLength": 4,
+      "description": "ISO 20022 purpose code (e.g. PAMT, SALA, TAXS)"
+    },
+    "regulatory_reporting": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "properties": {
+          "authority": { "type": "string" },
+          "reporting_code": { "type": "string" },
+          "information": { "type": ["string", "null"] }
+        }
+      },
+      "description": "BSA/AML regulatory reporting codes if applicable"
+    },
+
+    "is_on_us": {
+      "type": "boolean",
+      "description": "True when both originator and beneficiary FIs are the same institution"
+    },
+    "on_us_settlement_type": {
+      "type": ["string", "null"],
+      "enum": ["BOOK_TRANSFER", "INTERNAL_WIRE", null]
+    }
+  }
+}

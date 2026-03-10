@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jhbi/schemas/rail/v2/billpay_v2.schema.json",
+  "title": "Bill Pay Rail Details v2",
+  "description": "Rail-specific details for consumer bill payment transactions. Bill Pay is orchestrated by a payment aggregator (e.g. iPay, Payrailz, BPS) and ultimately settles via ACH, check, or real-time rail.",
+  "version": "v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rail_schema_version",
+    "rail_type",
+    "bill_pay_reference",
+    "biller_id",
+    "delivery_method"
+  ],
+  "properties": {
+    "rail_schema_version": { "const": "v2" },
+    "rail_type": { "const": "BILLPAY" },
+
+    "bill_pay_reference": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "Aggregator-assigned unique payment reference"
+    },
+
+    "biller_id": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "Aggregator's internal biller identifier"
+    },
+    "biller_name": {
+      "type": ["string", "null"],
+      "maxLength": 128,
+      "description": "Human-readable biller name (e.g. 'AT&T', 'Duke Energy')"
+    },
+    "biller_category": {
+      "type": ["string", "null"],
+      "enum": [
+        "UTILITY", "TELECOMMUNICATIONS", "INSURANCE", "MORTGAGE", "AUTO_LOAN",
+        "CREDIT_CARD", "GOVERNMENT", "HEALTHCARE", "SUBSCRIPTION", "OTHER", null
+      ]
+    },
+    "biller_account_number_token": {
+      "type": ["string", "null"],
+      "description": "Tokenized biller account / customer reference number"
+    },
+    "biller_routing_number": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "ACH routing number for the biller (if electronic)"
+    },
+
+    "delivery_method": {
+      "type": "string",
+      "enum": ["ELECTRONIC_ACH", "ELECTRONIC_REAL_TIME", "PAPER_CHECK", "LASER_DRAFT"],
+      "description": "How payment is actually delivered to the biller"
+    },
+    "underlying_rail": {
+      "type": ["string", "null"],
+      "enum": ["ACH", "RTP", "FEDNOW", "CHECK", null],
+      "description": "The underlying settlement rail used (populated once routed)"
+    },
+    "underlying_transaction_id": {
+      "type": ["string", "null"],
+      "description": "Transaction ID on the underlying rail (e.g. ACH trace number)"
+    },
+
+    "payment_method": {
+      "type": ["string", "null"],
+      "enum": ["CHECKING", "SAVINGS", "CARD", null],
+      "description": "Funding source for the bill payment"
+    },
+    "funding_account_token": {
+      "type": ["string", "null"],
+      "description": "Token for the customer's funding account"
+    },
+
+    "scheduled_delivery_date": {
+      "type": ["string", "null"],
+      "format": "date",
+      "description": "Date customer selected for delivery to biller"
+    },
+    "actual_delivery_date": {
+      "type": ["string", "null"],
+      "format": "date"
+    },
+    "payment_submit_date": {
+      "type": ["string", "null"],
+      "format": "date",
+      "description": "Date aggregator submitted payment"
+    },
+
+    "bill_reference_number": {
+      "type": ["string", "null"],
+      "maxLength": 64,
+      "description": "Biller's invoice or statement reference number"
+    },
+    "memo": {
+      "type": ["string", "null"],
+      "maxLength": 255
+    },
+
+    "recurring_details": {
+      "type": ["object", "null"],
+      "description": "Populated for recurring/scheduled bill payments",
+      "properties": {
+        "is_recurring": { "type": "boolean" },
+        "frequency": {
+          "type": ["string", "null"],
+          "enum": ["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "ANNUALLY", null]
+        },
+        "recurring_start_date": { "type": ["string", "null"], "format": "date" },
+        "recurring_end_date": { "type": ["string", "null"], "format": "date" },
+        "occurrence_number": {
+          "type": ["integer", "null"],
+          "description": "Which occurrence this payment is (1 = first)"
+        },
+        "total_occurrences": { "type": ["integer", "null"] }
+      }
+    },
+
+    "aggregator_name": {
+      "type": ["string", "null"],
+      "enum": ["IPAY", "PAYRAILZ", "BPS", "CHECKFREE", "OTHER", null],
+      "description": "Bill pay aggregator / processor used"
+    },
+    "aggregator_transaction_id": {
+      "type": ["string", "null"],
+      "description": "Aggregator's own transaction ID"
+    },
+
+    "is_on_us": {
+      "type": "boolean",
+      "description": "True when the biller account is also held at the same FI as the payer",
+      "default": false
+    }
+  }
+}

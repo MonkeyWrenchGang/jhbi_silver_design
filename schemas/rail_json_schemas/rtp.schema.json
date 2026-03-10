@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jhbi/schemas/rail/v2/rtp_v2.schema.json",
+  "title": "RTP (Real-Time Payments) Rail Details v2",
+  "description": "Rail-specific details for The Clearing House RTP network. RTP is ISO 20022-based, supports credits and Requests for Payment (RfP), and settles in real-time 24/7/365.",
+  "version": "v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rail_schema_version",
+    "rail_type",
+    "transaction_subtype",
+    "rtp_transaction_id"
+  ],
+  "properties": {
+    "rail_schema_version": { "const": "v2" },
+    "rail_type": { "const": "RTP" },
+
+    "transaction_subtype": {
+      "type": "string",
+      "enum": [
+        "CREDIT_TRANSFER",
+        "REQUEST_FOR_PAYMENT",
+        "REQUEST_FOR_PAYMENT_RESPONSE",
+        "PAYMENT_ACKNOWLEDGEMENT",
+        "PAYMENT_RETURN",
+        "INQUIRY"
+      ],
+      "description": "RTP message type / ISO 20022 pacs/camt message class"
+    },
+
+    "rtp_transaction_id": {
+      "type": "string",
+      "maxLength": 36,
+      "description": "TCH-assigned unique transaction identifier"
+    },
+    "end_to_end_id": {
+      "type": ["string", "null"],
+      "maxLength": 35,
+      "description": "ISO 20022 EndToEndId — assigned by originator, flows through to beneficiary"
+    },
+    "instruction_id": {
+      "type": ["string", "null"],
+      "maxLength": 35,
+      "description": "Instruction ID from the instructing agent"
+    },
+    "uetr": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "SWIFT Universal End-to-End Transaction Reference (UUID v4)"
+    },
+
+    "instructing_agent_routing": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "Sending FI ABA routing number (TCH participant)"
+    },
+    "instructing_agent_name": {
+      "type": ["string", "null"],
+      "maxLength": 128
+    },
+    "instructed_agent_routing": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{9}$",
+      "description": "Receiving FI ABA routing number (TCH participant)"
+    },
+    "instructed_agent_name": {
+      "type": ["string", "null"],
+      "maxLength": 128
+    },
+
+    "remittance_information": {
+      "type": ["string", "null"],
+      "maxLength": 140,
+      "description": "Unstructured remittance info (free text)"
+    },
+    "structured_remittance": {
+      "type": ["object", "null"],
+      "description": "Structured remittance (ISO 20022 RmtInf/Strd)",
+      "properties": {
+        "creditor_reference_type": { "type": "string" },
+        "creditor_reference": { "type": "string" },
+        "referred_doc_type": { "type": ["string", "null"] },
+        "referred_doc_number": { "type": ["string", "null"] },
+        "referred_doc_amount": { "type": ["number", "null"] }
+      }
+    },
+
+    "purpose_code": {
+      "type": ["string", "null"],
+      "maxLength": 4,
+      "description": "ISO 20022 purpose code (PAMT, SALA, TAXS, GDDS, etc.)"
+    },
+    "category_purpose": {
+      "type": ["string", "null"],
+      "maxLength": 4,
+      "description": "ISO 20022 category purpose code"
+    },
+
+    "settlement_date": {
+      "type": ["string", "null"],
+      "format": "date",
+      "description": "Date settlement was confirmed by TCH"
+    },
+    "settlement_time": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Exact timestamp of real-time settlement"
+    },
+    "rtp_network_status": {
+      "type": ["string", "null"],
+      "enum": ["RECEIVED", "ACCEPTED", "ACCEPTED_WITH_CHANGE", "PENDING", "REJECTED", "RETURNED", null]
+    },
+
+    "return_details": {
+      "type": ["object", "null"],
+      "properties": {
+        "return_reason_code": {
+          "type": "string",
+          "description": "ISO 20022 return reason code (e.g. AC04, AG01)"
+        },
+        "return_reason_description": { "type": ["string", "null"] },
+        "original_rtp_transaction_id": { "type": ["string", "null"] },
+        "return_ts": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "request_for_payment": {
+      "type": ["object", "null"],
+      "description": "Populated for RfP message types",
+      "properties": {
+        "rfp_id": { "type": "string" },
+        "rfp_status": {
+          "type": "string",
+          "enum": ["OPEN", "FULFILLED", "REJECTED", "CANCELLED", "EXPIRED"]
+        },
+        "rfp_expiry_date": { "type": "string", "format": "date-time" },
+        "payer_response_code": { "type": ["string", "null"] }
+      }
+    },
+
+    "is_on_us": {
+      "type": "boolean",
+      "description": "True when both FIs are the same institution (on-us RTP)"
+    }
+  }
+}

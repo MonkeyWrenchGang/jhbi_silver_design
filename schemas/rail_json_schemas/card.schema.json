@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jhbi/schemas/rail/v2/card_v2.schema.json",
+  "title": "Card Rail Details v2",
+  "description": "Rail-specific details for debit and credit card transactions including authorization, capture, refund, and dispute lifecycle.",
+  "version": "v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rail_schema_version",
+    "rail_type",
+    "card_type",
+    "card_brand",
+    "transaction_subtype"
+  ],
+  "properties": {
+    "rail_schema_version": { "const": "v2" },
+    "rail_type": { "const": "CARD" },
+
+    "card_type": {
+      "type": "string",
+      "enum": ["DEBIT", "CREDIT", "PREPAID", "FSA", "HSA"],
+      "description": "Type of card product"
+    },
+    "card_brand": {
+      "type": "string",
+      "enum": ["VISA", "MASTERCARD", "AMEX", "DISCOVER", "UNIONPAY", "OTHER"],
+      "description": "Card network / brand"
+    },
+    "card_last_four": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{4}$",
+      "description": "Last 4 digits of PAN (non-sensitive display only)"
+    },
+    "card_token": {
+      "type": ["string", "null"],
+      "description": "Network or internal token representing the card PAN"
+    },
+    "card_expiry_indicator": {
+      "type": ["string", "null"],
+      "description": "Expiry as MM/YY (non-sensitive) or tokenized reference"
+    },
+
+    "transaction_subtype": {
+      "type": "string",
+      "enum": [
+        "AUTHORIZATION",
+        "CAPTURE",
+        "AUTH_CAPTURE",
+        "REFUND",
+        "VOID",
+        "REVERSAL",
+        "CHARGEBACK",
+        "CHARGEBACK_REVERSAL",
+        "BALANCE_INQUIRY",
+        "CASH_ADVANCE"
+      ],
+      "description": "Specific operation within the card lifecycle"
+    },
+
+    "authorization_code": {
+      "type": ["string", "null"],
+      "maxLength": 6,
+      "description": "Issuer authorization approval code"
+    },
+    "authorization_date": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "capture_date": {
+      "type": ["string", "null"],
+      "format": "date"
+    },
+    "retrieval_reference_number": {
+      "type": ["string", "null"],
+      "maxLength": 12,
+      "description": "RRN — network-assigned retrieval reference"
+    },
+    "system_trace_audit_number": {
+      "type": ["string", "null"],
+      "maxLength": 6,
+      "description": "STAN — unique number assigned by POS/ATM for this message"
+    },
+    "network_transaction_id": {
+      "type": ["string", "null"],
+      "description": "Network-assigned transaction ID (Visa TransactionID, MC TranID, etc.)"
+    },
+
+    "merchant_category_code": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{4}$",
+      "description": "ISO 18245 Merchant Category Code"
+    },
+    "merchant_id": {
+      "type": ["string", "null"],
+      "maxLength": 15
+    },
+    "merchant_name": {
+      "type": ["string", "null"],
+      "maxLength": 128
+    },
+    "merchant_city": {
+      "type": ["string", "null"],
+      "maxLength": 64
+    },
+    "merchant_state": {
+      "type": ["string", "null"],
+      "maxLength": 3
+    },
+    "merchant_country_code": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Z]{2}$"
+    },
+    "terminal_id": {
+      "type": ["string", "null"],
+      "maxLength": 8
+    },
+
+    "card_entry_mode": {
+      "type": ["string", "null"],
+      "enum": ["SWIPE", "CHIP", "CONTACTLESS", "MANUAL_KEY", "ECOMMERCE", "RECURRING", "CREDENTIAL_ON_FILE", "ATM", null],
+      "description": "How the card was presented"
+    },
+    "card_present": {
+      "type": "boolean",
+      "description": "Whether the physical card was present at time of transaction"
+    },
+    "cvv_result": {
+      "type": ["string", "null"],
+      "enum": ["MATCH", "NO_MATCH", "NOT_PROVIDED", "ISSUER_NOT_CERTIFIED", null]
+    },
+    "avs_result": {
+      "type": ["string", "null"],
+      "maxLength": 2,
+      "description": "Address Verification System result code"
+    },
+
+    "issuer_response_code": {
+      "type": ["string", "null"],
+      "maxLength": 2,
+      "description": "ISO 8583 response code from issuer (00 = approved)"
+    },
+    "issuer_response_description": {
+      "type": ["string", "null"],
+      "maxLength": 128
+    },
+    "acquirer_reference": {
+      "type": ["string", "null"],
+      "maxLength": 64
+    },
+
+    "interchange_fee": {
+      "type": ["number", "null"],
+      "description": "Interchange fee amount (if available)"
+    },
+
+    "original_transaction_reference": {
+      "type": ["string", "null"],
+      "description": "For refunds, voids, chargebacks — reference to original transaction"
+    },
+
+    "chargeback_details": {
+      "type": ["object", "null"],
+      "properties": {
+        "chargeback_reason_code": { "type": "string" },
+        "chargeback_reason_description": { "type": ["string", "null"] },
+        "chargeback_date": { "type": "string", "format": "date" },
+        "chargeback_amount": { "type": "number" },
+        "dispute_status": {
+          "type": "string",
+          "enum": ["OPEN", "WON", "LOST", "WITHDRAWN"]
+        }
+      }
+    },
+
+    "is_on_us": {
+      "type": "boolean",
+      "description": "True when issuer and acquirer are the same FI (on-us card)"
+    },
+    "issuer_routing": {
+      "type": ["string", "null"],
+      "description": "BIN routing identifying the issuing bank"
+    },
+    "acquirer_institution_id": {
+      "type": ["string", "null"],
+      "description": "ISO 8583 acquirer institution ID"
+    }
+  }
+}
