@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>JHBI — AI/ML Intelligence First</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy:   #0A2342;
+  --blue:   #065A82;
+  --teal:   #1C7293;
+  --mint:   #02C39A;
+  --amber:  #F59E0B;
+  --purple: #7C3AED;
+  --red:    #DC2626;
+  --muted:  #7AAFC8;
+  --dk:     #A8C4D8;
+}
+body { font-family: "Segoe UI", Calibri, sans-serif; background: var(--navy); color: #fff; overflow-x: hidden; }
+
+/* HERO */
+.hero { text-align: center; padding: 60px 24px 36px; }
+.hero .pill { display: inline-block; background: var(--purple); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; padding: 4px 14px; border-radius: 20px; margin-bottom: 16px; }
+.hero h1 { font-size: clamp(26px, 5vw, 44px); font-weight: 800; line-height: 1.1; }
+.hero h1 span { color: var(--mint); }
+.hero p { max-width: 600px; margin: 14px auto 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+
+section { max-width: 1100px; margin: 0 auto; padding: 0 24px 60px; }
+.section-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--mint); margin-bottom: 6px; }
+.section-title { font-size: clamp(16px, 2.5vw, 22px); font-weight: 700; color: #fff; margin-bottom: 6px; }
+.section-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+hr.div { border: none; border-top: 1px solid #1A3558; margin: 0 24px 52px; }
+
+/* FEATURE PIPELINE */
+.pipeline { display: flex; align-items: stretch; gap: 0; overflow-x: auto; padding-bottom: 8px; margin-bottom: 28px; }
+.pl-stage { flex: 1 1 0; min-width: 140px; background: #06192D; border: 1px solid #1A3558; border-radius: 10px; padding: 16px 14px; }
+.pl-arrow { flex: 0 0 28px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--mint); }
+.pl-num { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 6px; }
+.pl-name { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.pl-items { list-style: none; }
+.pl-items li { font-size: 11px; color: var(--muted); padding: 2px 0; display: flex; align-items: center; gap: 5px; }
+.pl-items li::before { content: "·"; color: var(--mint); font-weight: 700; flex-shrink: 0; }
+
+/* USE CASE CARDS */
+.uc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.uc-card { background: #06192D; border: 1px solid #1A3558; border-radius: 10px; padding: 20px; transition: border-color 0.2s, transform 0.2s; }
+.uc-card:hover { border-color: var(--teal); transform: translateY(-2px); }
+.uc-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.uc-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.uc-title { font-size: 14px; font-weight: 700; color: #fff; }
+.uc-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.uc-body { font-size: 12px; color: var(--dk); line-height: 1.55; margin-bottom: 12px; }
+.feature-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { background: #0D2A44; border: 1px solid #1A3558; color: var(--muted); font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 20px; font-family: "Consolas", monospace; }
+
+/* FEATURE IMPORTANCE CHART */
+#featChart { width: 100%; }
+
+/* READINESS SCORECARD */
+.readiness { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.r-card { background: #06192D; border: 1px solid #1A3558; border-radius: 8px; padding: 14px 16px; }
+.r-card .r-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+.r-card .r-bar-wrap { background: #0D2A44; border-radius: 4px; height: 6px; overflow: hidden; }
+.r-card .r-bar { height: 100%; border-radius: 4px; transition: width 1.2s ease; }
+.r-card .r-pct { font-size: 20px; font-weight: 700; margin-top: 6px; }
+.r-card .r-note { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* SIGNAL TABLE */
+.signal-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.signal-table th { text-align: left; color: var(--muted); font-weight: 700; font-size: 10px; letter-spacing: 0.08em; padding: 8px 12px; border-bottom: 1px solid #1A3558; }
+.signal-table td { padding: 9px 12px; border-bottom: 1px solid #112233; color: var(--dk); }
+.signal-table td:first-child { color: #fff; font-weight: 600; font-family: "Consolas", monospace; font-size: 11px; }
+.signal-table tr:last-child td { border-bottom: none; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+
+footer { text-align: center; padding: 24px; color: #2A4A68; font-size: 11px; border-top: 1px solid #112233; }
+footer a { color: var(--teal); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="pill">DESIGN PRINCIPLE 06</div>
+  <h1>AI / ML <span>Intelligence First</span></h1>
+  <p>
+    The schema isn't just a storage layer — it's a feature store.
+    Structured columns, tokenized PII, and IR audit fields are purpose-built
+    for machine learning. <strong style="color:#fff">Models plug in without rework.</strong>
+  </p>
+</div>
+
+<!-- FEATURE PIPELINE -->
+<section>
+  <div class="section-label">THE ML PIPELINE</div>
+  <div class="section-title">From raw transaction to model-ready feature</div>
+  <div class="section-sub">Every stage adds signal. No feature engineering backlog.</div>
+  <div class="pipeline">
+    <div class="pl-stage">
+      <div class="pl-num" style="color:var(--blue)">STAGE 01</div>
+      <div class="pl-name">Raw Ingest</div>
+      <ul class="pl-items">
+        <li>Source-fidelity row</li>
+        <li>Rail-native fields</li>
+        <li>PII tokenized at ETL</li>
+        <li>Timestamps preserved</li>
+      </ul>
+    </div>
+    <div class="pl-arrow">›</div>
+    <div class="pl-stage">
+      <div class="pl-num" style="color:var(--teal)">STAGE 02</div>
+      <div class="pl-name">Silver Enrichment</div>
+      <ul class="pl-items">
+        <li>Party IDs resolved</li>
+        <li>is_on_us derived</li>
+        <li>FX cols normalized</li>
+        <li>match_rule tagged</li>
+      </ul>
+    </div>
+    <div class="pl-arrow">›</div>
+    <div class="pl-stage">
+      <div class="pl-num" style="color:var(--mint)">STAGE 03</div>
+      <div class="pl-name">Feature Extraction</div>
+      <ul class="pl-items">
+        <li>Velocity windows</li>
+        <li>Counterparty history</li>
+        <li>Rail switch patterns</li>
+        <li>Time-of-day signals</li>
+      </ul>
+    </div>
+    <div class="pl-arrow">›</div>
+    <div class="pl-stage">
+      <div class="pl-num" style="color:var(--amber)">STAGE 04</div>
+      <div class="pl-name">Model Scoring</div>
+      <ul class="pl-items">
+        <li>Fraud risk score</li>
+        <li>Anomaly flag</li>
+        <li>Churn probability</li>
+        <li>Cross-sell signal</li>
+      </ul>
+    </div>
+    <div class="pl-arrow">›</div>
+    <div class="pl-stage">
+      <div class="pl-num" style="color:var(--purple)">STAGE 05</div>
+      <div class="pl-name">Action / Output</div>
+      <ul class="pl-items">
+        <li>Real-time decisioning</li>
+        <li>Alert routing</li>
+        <li>Gold layer scores</li>
+        <li>BI / dashboards</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<hr class="div"/>
+
+<!-- ML USE CASES -->
+<section>
+  <div class="section-label">USE CASES</div>
+  <div class="section-title">Four models that run on this schema today</div>
+  <div class="section-sub">No custom joins, no denormalization. Every feature lives in <code style="color:var(--mint);font-family:Consolas">lake.unified_transactions</code> or <code style="color:var(--mint);font-family:Consolas">identity.*</code>.</div>
+  <div class="uc-grid">
+
+    <div class="uc-card">
+      <div class="uc-header">
+        <div class="uc-icon" style="background:#0D1F36">🚨</div>
+        <div><div class="uc-title">Fraud Detection</div><div class="uc-sub">Real-time scoring at ingest</div></div>
+      </div>
+      <div class="uc-body">Velocity counts, amount deviation from party baseline, cross-rail behavioral shift, new counterparty first-contact, off-hours activity — all first-class columns, no JSON parsing.</div>
+      <div class="feature-tags">
+        <span class="tag">amount</span>
+        <span class="tag">transaction_ts</span>
+        <span class="tag">originator_party_id</span>
+        <span class="tag">match_rule</span>
+        <span class="tag">is_on_us</span>
+        <span class="tag">payment_type</span>
+      </div>
+    </div>
+
+    <div class="uc-card">
+      <div class="uc-header">
+        <div class="uc-icon" style="background:#0D1F36">📉</div>
+        <div><div class="uc-title">Churn Prediction</div><div class="uc-sub">Party-level engagement scoring</div></div>
+      </div>
+      <div class="uc-body">Rail usage recency, frequency, and monetary value (RFM) computed directly from the party ID. Cross-rail activity drop signals disengagement before account closure.</div>
+      <div class="feature-tags">
+        <span class="tag">originator_party_id</span>
+        <span class="tag">payment_type</span>
+        <span class="tag">settlement_amount</span>
+        <span class="tag">transaction_ts</span>
+        <span class="tag">status</span>
+      </div>
+    </div>
+
+    <div class="uc-card">
+      <div class="uc-header">
+        <div class="uc-icon" style="background:#0D1F36">🔍</div>
+        <div><div class="uc-title">Anomaly Detection</div><div class="uc-sub">Unsupervised pattern shift</div></div>
+      </div>
+      <div class="uc-body">IBAN country deviation, FX rate outliers, sudden routing number change, new beneficiary + high amount — all detectable via structured columns with a simple isolation forest or Z-score.</div>
+      <div class="feature-tags">
+        <span class="tag">iban_country_code</span>
+        <span class="tag">fx_rate</span>
+        <span class="tag">original_currency_code</span>
+        <span class="tag">beneficiary_party_id</span>
+        <span class="tag">originator_block_key</span>
+      </div>
+    </div>
+
+    <div class="uc-card">
+      <div class="uc-header">
+        <div class="uc-icon" style="background:#0D1F36">💡</div>
+        <div><div class="uc-title">Product Propensity</div><div class="uc-sub">Next-best-action scoring</div></div>
+      </div>
+      <div class="uc-body">International wire activity → FX product offer. High Zelle + ACH volume → instant payment upgrade. BillPay usage → autopay enrollment. Rail mix is the signal.</div>
+      <div class="feature-tags">
+        <span class="tag">payment_type</span>
+        <span class="tag">original_currency_code</span>
+        <span class="tag">beneficiary_party_id</span>
+        <span class="tag">settlement_amount</span>
+        <span class="tag">is_on_us</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<hr class="div"/>
+
+<!-- FEATURE IMPORTANCE CHART -->
+<section>
+  <div class="section-label">FEATURE SIGNAL STRENGTH</div>
+  <div class="section-title">Columns ranked by ML utility across use cases</div>
+  <div class="section-sub">Every high-signal feature is a first-class column — no JSON unpacking, no runtime transformation.</div>
+  <svg id="featChart"></svg>
+</section>
+
+<hr class="div"/>
+
+<!-- ML READINESS SCORECARD -->
+<section>
+  <div class="section-label">ML READINESS SCORECARD</div>
+  <div class="section-title">Schema readiness by ML requirement</div>
+  <div class="section-sub">Measured against standard MLOps data requirements.</div>
+  <div class="readiness" id="readinessGrid"></div>
+</section>
+
+<hr class="div"/>
+
+<!-- SIGNAL TABLE -->
+<section>
+  <div class="section-label">SIGNAL CATALOG</div>
+  <div class="section-title">Key features and their source columns</div>
+  <div class="section-sub">Every feature derivable without a custom ETL job.</div>
+  <table class="signal-table">
+    <thead>
+      <tr>
+        <th>DERIVED FEATURE</th>
+        <th>SOURCE COLUMNS</th>
+        <th>USE CASES</th>
+        <th>WINDOW</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>txn_velocity_24h</td>
+        <td>originator_party_id, transaction_ts</td>
+        <td><span class="badge" style="background:#1A0A2E;color:#7C3AED">Fraud</span></td>
+        <td>24h</td>
+      </tr>
+      <tr>
+        <td>amt_deviation_pct</td>
+        <td>settlement_amount, originator_party_id</td>
+        <td><span class="badge" style="background:#1A0A2E;color:#7C3AED">Fraud</span> <span class="badge" style="background:#0A2E14;color:#02C39A">Anomaly</span></td>
+        <td>90d baseline</td>
+      </tr>
+      <tr>
+        <td>new_counterparty_flag</td>
+        <td>beneficiary_party_id, transaction_ts</td>
+        <td><span class="badge" style="background:#1A0A2E;color:#7C3AED">Fraud</span></td>
+        <td>Party lifetime</td>
+      </tr>
+      <tr>
+        <td>rail_switch_count</td>
+        <td>payment_type, originator_party_id</td>
+        <td><span class="badge" style="background:#0A2E14;color:#02C39A">Churn</span> <span class="badge" style="background:#2E1A00;color:#F59E0B">Propensity</span></td>
+        <td>30d</td>
+      </tr>
+      <tr>
+        <td>fx_rate_z_score</td>
+        <td>fx_rate, original_currency_code</td>
+        <td><span class="badge" style="background:#0A2E14;color:#02C39A">Anomaly</span></td>
+        <td>7d rolling</td>
+      </tr>
+      <tr>
+        <td>intl_wire_pct</td>
+        <td>payment_type = WIRE, iban_country_code ≠ US</td>
+        <td><span class="badge" style="background:#2E1A00;color:#F59E0B">Propensity</span></td>
+        <td>90d</td>
+      </tr>
+      <tr>
+        <td>on_us_ratio</td>
+        <td>is_on_us, originator_party_id</td>
+        <td><span class="badge" style="background:#0A2E14;color:#02C39A">Churn</span></td>
+        <td>60d</td>
+      </tr>
+      <tr>
+        <td>ir_confidence_score</td>
+        <td>match_rule, originator_block_key</td>
+        <td><span class="badge" style="background:#1A0A2E;color:#7C3AED">Fraud</span> <span class="badge" style="background:#0A2E14;color:#02C39A">Anomaly</span></td>
+        <td>Per txn</td>
+      </tr>
+      <tr>
+        <td>party_age_days</td>
+        <td>originator_party_id → party.created_at</td>
+        <td><span class="badge" style="background:#1A0A2E;color:#7C3AED">Fraud</span></td>
+        <td>Per txn</td>
+      </tr>
+      <tr>
+        <td>billpay_active_flag</td>
+        <td>payment_type = BILLPAY, status = SETTLED</td>
+        <td><span class="badge" style="background:#2E1A00;color:#F59E0B">Propensity</span></td>
+        <td>90d</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<footer>
+  JHBI Unified Payments Platform · AI/ML Intelligence First ·
+  <a href="https://github.com/MonkeyWrenchGang/jhbi_silver_design" target="_blank">github.com/MonkeyWrenchGang/jhbi_silver_design</a>
+</footer>
+
+<script>
+// ── Feature importance bar chart ────────────────────────────
+(function() {
+  const features = [
+    { name: "originator_party_id",    score: 0.94, color: "#02C39A" },
+    { name: "settlement_amount",      score: 0.91, color: "#02C39A" },
+    { name: "transaction_ts",         score: 0.88, color: "#02C39A" },
+    { name: "payment_type",           score: 0.85, color: "#065A82" },
+    { name: "beneficiary_party_id",   score: 0.82, color: "#065A82" },
+    { name: "match_rule",             score: 0.78, color: "#1C7293" },
+    { name: "original_currency_code", score: 0.72, color: "#1C7293" },
+    { name: "fx_rate",                score: 0.68, color: "#F59E0B" },
+    { name: "is_on_us",               score: 0.65, color: "#F59E0B" },
+    { name: "iban_country_code",      score: 0.61, color: "#7C3AED" },
+    { name: "originator_block_key",   score: 0.58, color: "#7C3AED" },
+    { name: "status",                 score: 0.54, color: "#6B7280" },
+  ];
+
+  const svgEl = document.getElementById("featChart");
+  const W = svgEl.parentElement.clientWidth;
+  const margin = { top: 8, right: 80, bottom: 8, left: 210 };
+  const H = features.length * 32 + margin.top + margin.bottom;
+  const iW = W - margin.left - margin.right;
+
+  const svg = d3.select("#featChart")
+    .attr("viewBox", `0 0 ${W} ${H}`).attr("height", H);
+
+  const x = d3.scaleLinear().domain([0, 1]).range([0, iW]);
+  const y = d3.scaleBand().domain(features.map(f => f.name)).range([margin.top, H - margin.bottom]).padding(0.22);
+
+  const g = svg.append("g").attr("transform", `translate(${margin.left},0)`);
+
+  // Grid lines
+  [0.25, 0.5, 0.75, 1.0].forEach(v => {
+    g.append("line")
+      .attr("x1", x(v)).attr("y1", margin.top)
+      .attr("x2", x(v)).attr("y2", H - margin.bottom)
+      .attr("stroke", "#1A3558").attr("stroke-dasharray", "3,3");
+    g.append("text")
+      .attr("x", x(v)).attr("y", margin.top - 1)
+      .attr("text-anchor", "middle").attr("fill", "#2A4A68")
+      .attr("font-size", 9).text(v);
+  });
+
+  // Bars
+  g.selectAll("rect")
+    .data(features).join("rect")
+    .attr("x", 0)
+    .attr("y", d => y(d.name))
+    .attr("height", y.bandwidth())
+    .attr("width", 0)
+    .attr("rx", 3)
+    .attr("fill", d => d.color)
+    .attr("opacity", 0.85)
+    .transition().duration(900).delay((d, i) => i * 60)
+    .attr("width", d => x(d.score));
+
+  // Score labels
+  g.selectAll(".score")
+    .data(features).join("text")
+    .attr("class", "score")
+    .attr("x", d => x(d.score) + 6)
+    .attr("y", d => y(d.name) + y.bandwidth() / 2)
+    .attr("dominant-baseline", "middle")
+    .attr("fill", "#7AAFC8").attr("font-size", 11).attr("font-weight", 600)
+    .text(d => d.score.toFixed(2));
+
+  // Y-axis labels
+  svg.selectAll(".feat-label")
+    .data(features).join("text")
+    .attr("class", "feat-label")
+    .attr("x", margin.left - 8)
+    .attr("y", d => y(d.name) + y.bandwidth() / 2 + margin.top - margin.top)
+    .attr("dominant-baseline", "middle")
+    .attr("text-anchor", "end")
+    .attr("fill", "#A8C4D8")
+    .attr("font-size", 11)
+    .attr("font-family", "Consolas, monospace")
+    .text(d => d.name);
+})();
+
+// ── ML Readiness Scorecard ───────────────────────────────────
+(function() {
+  const cards = [
+    { label: "Label availability",      pct: 92, color: "#02C39A", note: "status = SETTLED|FAILED|RETURNED" },
+    { label: "Feature completeness",     pct: 97, color: "#02C39A", note: "First-class columns, no JSON" },
+    { label: "PII compliance",           pct: 100, color: "#02C39A", note: "All sensitive fields tokenized" },
+    { label: "Temporal ordering",        pct: 98, color: "#065A82", note: "Partition by transaction_ts" },
+    { label: "Class balance (fraud)",    pct: 64, color: "#F59E0B", note: "Requires synthetic upsampling" },
+    { label: "Cross-rail coverage",      pct: 95, color: "#02C39A", note: "8 rails in unified schema" },
+    { label: "Party ID resolution rate", pct: 87, color: "#1C7293", note: "13% NEW_PARTY — improving" },
+    { label: "Real-time availability",   pct: 99, color: "#02C39A", note: "BQ streaming insert <10s" },
+  ];
+  const grid = document.getElementById("readinessGrid");
+  cards.forEach(c => {
+    const el = document.createElement("div");
+    el.className = "r-card";
+    el.innerHTML = `
+      <div class="r-label">${c.label}</div>
+      <div class="r-bar-wrap"><div class="r-bar" style="background:${c.color};width:0%" data-w="${c.pct}%"></div></div>
+      <div class="r-pct" style="color:${c.color}">${c.pct}%</div>
+      <div class="r-note">${c.note}</div>`;
+    grid.appendChild(el);
+  });
+
+  // Animate bars on scroll
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        document.querySelectorAll(".r-bar").forEach(b => {
+          b.style.width = b.dataset.w;
+        });
+        observer.disconnect();
+      }
+    });
+  }, { threshold: 0.3 });
+  observer.observe(grid);
+})();
+</script>
+</body>
+</html>

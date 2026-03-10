@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>JHBI — Identity-First Data Model</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy:   #0A2342;
+  --blue:   #065A82;
+  --teal:   #1C7293;
+  --mint:   #02C39A;
+  --amber:  #F59E0B;
+  --purple: #7C3AED;
+  --red:    #DC2626;
+  --light:  #F0F4F8;
+  --muted:  #7AAFC8;
+  --dk:     #A8C4D8;
+}
+
+body {
+  font-family: "Segoe UI", Calibri, sans-serif;
+  background: var(--navy);
+  color: #fff;
+  overflow-x: hidden;
+}
+
+/* ── HERO ───────────────────────────────────────────────────── */
+.hero {
+  text-align: center;
+  padding: 64px 24px 40px;
+  position: relative;
+}
+.hero .pill {
+  display: inline-block;
+  background: var(--teal);
+  color: var(--mint);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 4px 14px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+}
+.hero h1 {
+  font-size: clamp(28px, 5vw, 46px);
+  font-weight: 800;
+  line-height: 1.1;
+  color: #fff;
+}
+.hero h1 span { color: var(--mint); }
+.hero p {
+  max-width: 580px;
+  margin: 16px auto 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ── SECTION WRAPPERS ───────────────────────────────────────── */
+section {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px 64px;
+}
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--mint);
+  margin-bottom: 8px;
+}
+.section-title {
+  font-size: clamp(18px, 3vw, 26px);
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6px;
+}
+.section-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 28px;
+}
+
+/* ── DIVIDER ────────────────────────────────────────────────── */
+.divider {
+  border: none;
+  border-top: 1px solid #1A3558;
+  margin: 0 24px 56px;
+}
+
+/* ── ACT 1: TRANSACTION FLOW ────────────────────────────────── */
+#flowCanvas { width: 100%; display: block; }
+
+.rail-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--blue);
+  border: 1px solid #1A4A72;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── ACT 2: IDENTITY GRAPH ───────────────────────────────────── */
+#graphWrap {
+  background: #06192D;
+  border: 1px solid #1A3558;
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+}
+#graphSvg { width: 100%; display: block; }
+
+.graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--dk);
+}
+.legend-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tooltip-graph {
+  position: absolute;
+  background: #0A2342;
+  border: 1px solid var(--teal);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  max-width: 200px;
+  z-index: 10;
+}
+.tooltip-graph .tg-name { font-weight: 700; font-size: 13px; color: #fff; margin-bottom: 4px; }
+.tooltip-graph .tg-row  { color: var(--dk); margin-top: 2px; }
+.tooltip-graph .tg-row span { color: var(--mint); font-weight: 600; }
+
+/* ── ACT 3: INSIGHT CARDS ───────────────────────────────────── */
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+.insight-card {
+  background: #06192D;
+  border: 1px solid #1A3558;
+  border-radius: 10px;
+  padding: 18px 20px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.insight-card:hover {
+  border-color: var(--teal);
+  transform: translateY(-2px);
+}
+.insight-card .ic-num {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.insight-card .ic-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.insight-card .ic-body {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.insight-card .ic-query {
+  margin-top: 12px;
+  background: #0A2342;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 11px;
+  color: var(--mint);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+/* ── BLOCK-AND-KEY FLOW ─────────────────────────────────────── */
+.bk-flow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+.bk-step {
+  flex: 0 0 auto;
+  background: #06192D;
+  border: 1px solid #1A3558;
+  border-radius: 8px;
+  padding: 14px 16px;
+  min-width: 130px;
+  text-align: center;
+}
+.bk-step .bks-rule {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+.bk-step .bks-label {
+  font-size: 12px;
+  color: #fff;
+  font-weight: 600;
+}
+.bk-step .bks-sub {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.bk-arrow {
+  flex: 0 0 28px;
+  text-align: center;
+  font-size: 18px;
+  color: var(--mint);
+}
+
+/* ── FOOTER ─────────────────────────────────────────────────── */
+footer {
+  text-align: center;
+  padding: 24px;
+  color: #2A4A68;
+  font-size: 11px;
+  border-top: 1px solid #112233;
+}
+footer a { color: var(--teal); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- ─── HERO ──────────────────────────────────────────────── -->
+<div class="hero">
+  <div class="pill">DESIGN PRINCIPLE 02</div>
+  <h1>Identity-<span>First</span> Data Model</h1>
+  <p>Every transaction is linked to a canonical party record before analytics run.
+     Cross-rail insights don't start with payments — they start with the <strong style="color:#fff">identity graph</strong>.</p>
+</div>
+
+<!-- ─── ACT 1: TRANSACTION → PARTY FLOW ──────────────────── -->
+<section>
+  <div class="section-label">ACT 01</div>
+  <div class="section-title">Every transaction links to a party record</div>
+  <div class="section-sub">
+    Regardless of rail, every row in <code style="color:var(--mint);font-family:Consolas">lake.unified_transactions</code>
+    carries resolved originator &amp; beneficiary party IDs.
+  </div>
+  <svg id="flowCanvas"></svg>
+</section>
+
+<hr class="divider"/>
+
+<!-- ─── BLOCK-AND-KEY RESOLUTION ──────────────────────────── -->
+<section>
+  <div class="section-label">IDENTITY RESOLUTION ENGINE</div>
+  <div class="section-title">Deterministic block-and-key matching</div>
+  <div class="section-sub">Five ordered rules — first match wins. Every decision is auditable via <code style="color:var(--mint);font-family:Consolas">match_rule</code> on the row.</div>
+  <div class="bk-flow">
+    <div class="bk-step"><div class="bks-rule" style="color:var(--mint)">RULE 1</div><div class="bks-label">EXACT_TOKEN</div><div class="bks-sub">Vault token match</div></div>
+    <div class="bk-arrow">›</div>
+    <div class="bk-step"><div class="bks-rule" style="color:var(--teal)">RULE 2</div><div class="bks-label">ROUTING_ACCT</div><div class="bks-sub">ABA + account</div></div>
+    <div class="bk-arrow">›</div>
+    <div class="bk-step"><div class="bks-rule" style="color:var(--amber)">RULE 3</div><div class="bks-label">PROXY_EXACT</div><div class="bks-sub">Phone / email token</div></div>
+    <div class="bk-arrow">›</div>
+    <div class="bk-step"><div class="bks-rule" style="color:var(--purple)">RULE 4</div><div class="bks-label">NAME_ROUTING</div><div class="bks-sub">Name + ABA fuzzy</div></div>
+    <div class="bk-arrow">›</div>
+    <div class="bk-step"><div class="bks-rule" style="color:var(--red)">RULE 5</div><div class="bks-label">NEW_PARTY</div><div class="bks-sub">Create new record</div></div>
+  </div>
+</section>
+
+<hr class="divider"/>
+
+<!-- ─── ACT 2: IDENTITY GRAPH ─────────────────────────────── -->
+<section>
+  <div class="section-label">ACT 02</div>
+  <div class="section-title">The identity graph</div>
+  <div class="section-sub">
+    Party nodes connected by relationships — joint accounts, UBO chains, biller registries.
+    Hover a node to explore. Drag to rearrange.
+  </div>
+  <div id="graphWrap">
+    <svg id="graphSvg"></svg>
+    <div class="tooltip-graph" id="graphTip"></div>
+  </div>
+  <div class="graph-legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#02C39A"></div>Individual</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#065A82"></div>Business</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#F59E0B"></div>Biller</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#7C3AED"></div>FI / Bank</div>
+    <div class="legend-item" style="margin-left:auto;color:var(--muted)">
+      Edge width ∝ transaction volume
+    </div>
+  </div>
+</section>
+
+<hr class="divider"/>
+
+<!-- ─── ACT 3: CROSS-RAIL INSIGHTS ────────────────────────── -->
+<section>
+  <div class="section-label">ACT 03</div>
+  <div class="section-title">Cross-rail insights only the identity graph unlocks</div>
+  <div class="section-sub">Without resolved party IDs, these queries require expensive joins across rail-specific tables and still produce ambiguous results.</div>
+  <div class="insights-grid">
+
+    <div class="insight-card">
+      <div class="ic-num" style="color:var(--mint)">8→1</div>
+      <div class="ic-label">Total $ flow per party, all rails</div>
+      <div class="ic-body">Sum inflow and outflow for a single entity across ACH, Wire, Zelle, RTP — one <code>WHERE originator_party_id = ?</code>.</div>
+      <div class="ic-query">SELECT SUM(settlement_amount)<br>FROM unified_transactions<br>WHERE originator_party_id = 'P-4821'<br>  AND status = 'SETTLED'</div>
+    </div>
+
+    <div class="insight-card">
+      <div class="ic-num" style="color:var(--teal)">⇄</div>
+      <div class="ic-label">Counterparty exposure across rails</div>
+      <div class="ic-body">Find every rail where Party A sent money to Party B — even if they used different account numbers each time.</div>
+      <div class="ic-query">SELECT payment_type,<br>  SUM(settlement_amount)<br>FROM unified_transactions<br>WHERE originator_party_id = 'P-4821'<br>  AND beneficiary_party_id = 'P-0093'<br>GROUP BY 1</div>
+    </div>
+
+    <div class="insight-card">
+      <div class="ic-num" style="color:var(--amber)">UBO</div>
+      <div class="ic-label">Ultimate beneficial owner roll-up</div>
+      <div class="ic-body">Aggregate all transaction volume across entities owned by the same UBO using the <code>party_relationship</code> table.</div>
+      <div class="ic-query">SELECT SUM(t.settlement_amount)<br>FROM unified_transactions t<br>JOIN party_relationship r<br>  ON t.originator_party_id = r.child_party_id<br>WHERE r.parent_party_id = 'UBO-112'<br>  AND r.relationship_type = 'UBO'</div>
+    </div>
+
+    <div class="insight-card">
+      <div class="ic-num" style="color:var(--purple)">JT</div>
+      <div class="ic-label">Joint account cross-rail activity</div>
+      <div class="ic-body">Identify all payment activity tied to a joint account, regardless of which account holder initiated the transaction or which rail was used.</div>
+      <div class="ic-query">SELECT p.party_id, t.payment_type,<br>  SUM(t.settlement_amount)<br>FROM unified_transactions t<br>JOIN party_account_link l<br>  ON t.originator_party_id = l.party_id<br>WHERE l.account_id = 'ACCT-7734'<br>GROUP BY 1,2</div>
+    </div>
+
+    <div class="insight-card">
+      <div class="ic-num" style="color:var(--red)">IR</div>
+      <div class="ic-label">Identity resolution quality by rail</div>
+      <div class="ic-body">Track what % of transactions per rail have resolved party IDs — surfacing data quality gaps at the source system level.</div>
+      <div class="ic-query">SELECT payment_type,<br>  COUNTIF(originator_party_id IS NOT NULL)<br>    / COUNT(*) AS ir_rate<br>FROM unified_transactions<br>WHERE DATE(transaction_ts) >= DATE_SUB(CURRENT_DATE,INTERVAL 30 DAY)<br>GROUP BY 1</div>
+    </div>
+
+    <div class="insight-card">
+      <div class="ic-num" style="color:var(--mint)">ON-US</div>
+      <div class="ic-label">On-us detection without a lookup</div>
+      <div class="ic-body">Because both parties are resolved at ETL time, <code>is_on_us</code> is a derived boolean on every row — zero runtime joins in query paths.</div>
+      <div class="ic-query">SELECT payment_type,<br>  COUNTIF(is_on_us) AS on_us_count,<br>  SUM(CASE WHEN is_on_us<br>    THEN settlement_amount END) AS on_us_vol<br>FROM unified_transactions<br>GROUP BY 1</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ─── FOOTER ─────────────────────────────────────────────── -->
+<footer>
+  JHBI Unified Payments Platform · Identity-First Data Model ·
+  <a href="https://github.com/MonkeyWrenchGang/jhbi_silver_design" target="_blank">github.com/MonkeyWrenchGang/jhbi_silver_design</a>
+</footer>
+
+
+<!-- ─── SCRIPTS ────────────────────────────────────────────── -->
+<script>
+// ─────────────────────────────────────────────────────────────
+// ACT 1 — Transaction → Party flow (SVG animation)
+// ─────────────────────────────────────────────────────────────
+(function() {
+  const rails = [
+    { name: "ACH",     color: "#065A82", party: 0 },
+    { name: "WIRE",    color: "#1C7293", party: 1 },
+    { name: "CARD",    color: "#02C39A", party: 2 },
+    { name: "ZELLE",   color: "#F59E0B", party: 0 },
+    { name: "RTP",     color: "#7C3AED", party: 1 },
+    { name: "FEDNOW",  color: "#0891B2", party: 3 },
+    { name: "CHECK",   color: "#6B7280", party: 2 },
+    { name: "BILLPAY", color: "#DC2626", party: 3 },
+  ];
+
+  const parties = [
+    { id: "P-4821", name: "Sarah M.",       type: "Individual", rails: ["ACH","ZELLE"],         txns: 142 },
+    { id: "P-0093", name: "Acme Corp",      type: "Business",   rails: ["WIRE","RTP"],           txns:  38 },
+    { id: "P-7734", name: "First FI",       type: "FI/Bank",    rails: ["CARD","CHECK"],         txns: 509 },
+    { id: "P-2210", name: "Utility Co",     type: "Biller",     rails: ["FEDNOW","BILLPAY"],     txns:  91 },
+  ];
+
+  const svg = d3.select("#flowCanvas");
+  const W = (svg.node().parentElement || document.body).clientWidth;
+  const H = Math.max(260, W * 0.28);
+  svg.attr("viewBox", `0 0 ${W} ${H}`).attr("height", H);
+
+  const MX = W / 2;          // center x (resolution engine)
+  const railXs = rails.map((_, i) => 60 + (i / (rails.length - 1)) * (W * 0.42));
+  const partyXs = parties.map((_, i) => W * 0.72 + (i / (parties.length - 1)) * (W * 0.22));
+  const railY = 40;
+  const engY = H / 2;
+  const partyY = H - 44;
+
+  // Background: resolution engine box
+  const engW = 160, engH = 40;
+  svg.append("rect")
+    .attr("x", MX - engW/2).attr("y", engY - engH/2)
+    .attr("width", engW).attr("height", engH)
+    .attr("rx", 8)
+    .attr("fill", "#06192D").attr("stroke", "#02C39A").attr("stroke-width", 1.5);
+  svg.append("text")
+    .attr("x", MX).attr("y", engY + 1)
+    .attr("text-anchor", "middle").attr("dominant-baseline", "middle")
+    .attr("fill", "#02C39A").attr("font-size", 11).attr("font-weight", 700)
+    .attr("letter-spacing", 1)
+    .text("IDENTITY RESOLUTION");
+
+  // Rail badges
+  rails.forEach((r, i) => {
+    const x = railXs[i];
+    const bw = 62, bh = 22;
+    svg.append("rect")
+      .attr("x", x - bw/2).attr("y", railY - bh/2)
+      .attr("width", bw).attr("height", bh).attr("rx", 11)
+      .attr("fill", r.color).attr("opacity", 0.9);
+    svg.append("text")
+      .attr("x", x).attr("y", railY + 1)
+      .attr("text-anchor", "middle").attr("dominant-baseline", "middle")
+      .attr("fill", "#fff").attr("font-size", 10).attr("font-weight", 700)
+      .text(r.name);
+  });
+
+  // Party nodes
+  parties.forEach((p, i) => {
+    const x = partyXs[i];
+    const colors = { Individual: "#02C39A", Business: "#065A82", "FI/Bank": "#7C3AED", Biller: "#F59E0B" };
+    const c = colors[p.type] || "#1C7293";
+    svg.append("circle").attr("cx", x).attr("cy", partyY).attr("r", 18)
+      .attr("fill", c).attr("opacity", 0.85);
+    svg.append("text")
+      .attr("x", x).attr("y", partyY + 1)
+      .attr("text-anchor", "middle").attr("dominant-baseline", "middle")
+      .attr("fill", "#fff").attr("font-size", 9).attr("font-weight", 700)
+      .text(p.id);
+    svg.append("text")
+      .attr("x", x).attr("y", partyY + 26)
+      .attr("text-anchor", "middle")
+      .attr("fill", "#7AAFC8").attr("font-size", 10)
+      .text(p.name);
+  });
+
+  // Static connector lines (rail → engine → party)
+  rails.forEach((r, i) => {
+    svg.append("line")
+      .attr("x1", railXs[i]).attr("y1", railY + 12)
+      .attr("x2", MX).attr("y2", engY - 20)
+      .attr("stroke", r.color).attr("stroke-width", 1)
+      .attr("opacity", 0.18);
+  });
+  parties.forEach((p, i) => {
+    svg.append("line")
+      .attr("x1", MX).attr("y1", engY + 20)
+      .attr("x2", partyXs[i]).attr("y2", partyY - 18)
+      .attr("stroke", "#02C39A").attr("stroke-width", 1)
+      .attr("opacity", 0.18);
+  });
+
+  // Animated packets: rail → engine
+  function spawnPacket(railIdx) {
+    const r = rails[railIdx];
+    const sx = railXs[railIdx], sy = railY + 12;
+    const ex = MX, ey = engY - 20;
+
+    const dot = svg.append("circle")
+      .attr("r", 4).attr("fill", r.color).attr("opacity", 0.9)
+      .attr("cx", sx).attr("cy", sy);
+
+    dot.transition().duration(600).ease(d3.easeQuadIn)
+      .attr("cx", ex).attr("cy", ey)
+      .on("end", function() {
+        d3.select(this).remove();
+        // then engine → party
+        const pi = r.party;
+        const px = partyXs[pi], py = partyY - 18;
+        const dot2 = svg.append("circle")
+          .attr("r", 4).attr("fill", "#02C39A").attr("opacity", 0.9)
+          .attr("cx", ex).attr("cy", ey);
+        dot2.transition().duration(500).ease(d3.easeQuadOut)
+          .attr("cx", px).attr("cy", py)
+          .on("end", function() {
+            d3.select(this).transition().duration(200).attr("opacity", 0).remove();
+            // pulse the party node
+            svg.append("circle")
+              .attr("cx", px).attr("cy", partyY).attr("r", 18)
+              .attr("fill", "none").attr("stroke", "#02C39A").attr("stroke-width", 2)
+              .attr("opacity", 0.7)
+              .transition().duration(500)
+              .attr("r", 30).attr("opacity", 0)
+              .remove();
+          });
+      });
+  }
+
+  let railIdx = 0;
+  function fireNext() {
+    spawnPacket(railIdx % rails.length);
+    railIdx++;
+    setTimeout(fireNext, 350 + Math.random() * 200);
+  }
+  setTimeout(fireNext, 500);
+})();
+
+
+// ─────────────────────────────────────────────────────────────
+// ACT 2 — Force-directed identity graph
+// ─────────────────────────────────────────────────────────────
+(function() {
+  const nodes = [
+    { id: "P-4821", label: "Sarah M.",       type: "individual", txns: 142, rails: 2 },
+    { id: "P-0093", label: "Acme Corp",      type: "business",   txns:  38, rails: 3 },
+    { id: "P-7734", label: "First FI",       type: "fi",         txns: 509, rails: 4 },
+    { id: "P-2210", label: "Utility Co",     type: "biller",     txns:  91, rails: 2 },
+    { id: "P-3300", label: "John D.",        type: "individual", txns:  67, rails: 2 },
+    { id: "P-5512", label: "Beta LLC",       type: "business",   txns:  24, rails: 2 },
+    { id: "P-8801", label: "Metro Bank",     type: "fi",         txns: 301, rails: 3 },
+    { id: "P-1190", label: "Gas & Electric", type: "biller",     txns:  55, rails: 2 },
+    { id: "P-6644", label: "Maria R.",       type: "individual", txns:  88, rails: 3 },
+    { id: "P-9920", label: "DataCo Inc",     type: "business",   txns:  42, rails: 2 },
+    { id: "P-0011", label: "City Credit",    type: "fi",         txns: 178, rails: 2 },
+    { id: "P-4430", label: "TeleCo",         type: "biller",     txns:  33, rails: 1 },
+  ];
+
+  const links = [
+    { source: "P-4821", target: "P-0093", type: "ACH",    value: 3 },
+    { source: "P-4821", target: "P-7734", type: "CARD",   value: 2 },
+    { source: "P-4821", target: "P-3300", type: "ZELLE",  value: 4, rel: "JOINT" },
+    { source: "P-0093", target: "P-7734", type: "WIRE",   value: 5 },
+    { source: "P-0093", target: "P-5512", type: "ACH",    value: 3, rel: "UBO" },
+    { source: "P-0093", target: "P-8801", type: "WIRE",   value: 4 },
+    { source: "P-7734", target: "P-8801", type: "RTP",    value: 6 },
+    { source: "P-7734", target: "P-0011", type: "FEDNOW", value: 4 },
+    { source: "P-2210", target: "P-4821", type: "BILLPAY",value: 2 },
+    { source: "P-2210", target: "P-3300", type: "BILLPAY",value: 2 },
+    { source: "P-3300", target: "P-9920", type: "ACH",    value: 3 },
+    { source: "P-5512", target: "P-9920", type: "WIRE",   value: 2 },
+    { source: "P-6644", target: "P-7734", type: "CARD",   value: 2 },
+    { source: "P-6644", target: "P-1190", type: "BILLPAY",value: 2 },
+    { source: "P-8801", target: "P-0011", type: "RTP",    value: 5 },
+    { source: "P-1190", target: "P-6644", type: "ACH",    value: 1 },
+    { source: "P-4430", target: "P-4821", type: "BILLPAY",value: 1 },
+    { source: "P-4430", target: "P-6644", type: "BILLPAY",value: 1 },
+    { source: "P-9920", target: "P-8801", type: "ACH",    value: 3 },
+    { source: "P-0011", target: "P-7734", type: "FEDNOW", value: 3 },
+  ];
+
+  const railColors = {
+    ACH:"#065A82",WIRE:"#1C7293",CARD:"#02C39A",
+    ZELLE:"#F59E0B",RTP:"#7C3AED",FEDNOW:"#0891B2",
+    CHECK:"#6B7280",BILLPAY:"#DC2626"
+  };
+  const nodeColors = {
+    individual: "#02C39A",
+    business:   "#065A82",
+    fi:         "#7C3AED",
+    biller:     "#F59E0B"
+  };
+  const typeLabels = {
+    individual: "Individual", business: "Business",
+    fi: "FI / Bank", biller: "Biller"
+  };
+
+  const wrap = document.getElementById("graphWrap");
+  const W = wrap.clientWidth || 800;
+  const H = Math.max(380, W * 0.45);
+  const svg = d3.select("#graphSvg").attr("viewBox", `0 0 ${W} ${H}`).attr("height", H);
+
+  // Arrow marker
+  svg.append("defs").append("marker")
+    .attr("id", "arrowG").attr("viewBox","0 -4 8 8")
+    .attr("refX",14).attr("refY",0)
+    .attr("markerWidth",5).attr("markerHeight",5)
+    .attr("orient","auto")
+    .append("path").attr("d","M0,-4L8,0L0,4").attr("fill","#1C7293").attr("opacity",0.6);
+
+  const sim = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d => d.id).distance(d => 90 + d.value * 8))
+    .force("charge", d3.forceManyBody().strength(-220))
+    .force("center", d3.forceCenter(W/2, H/2))
+    .force("collide", d3.forceCollide(32));
+
+  // Relationship edge labels (JOINT, UBO)
+  const relLinks = links.filter(l => l.rel);
+
+  const edgeLabel = svg.append("g").selectAll("text")
+    .data(relLinks).join("text")
+    .attr("fill", d => d.rel === "UBO" ? "#F59E0B" : "#02C39A")
+    .attr("font-size", 9).attr("font-weight", 700)
+    .attr("text-anchor", "middle")
+    .text(d => d.rel);
+
+  const link = svg.append("g").selectAll("line")
+    .data(links).join("line")
+    .attr("stroke", d => railColors[d.type] || "#1C7293")
+    .attr("stroke-width", d => d.value * 0.7)
+    .attr("opacity", 0.4)
+    .attr("marker-end", "url(#arrowG)");
+
+  const nodeG = svg.append("g").selectAll("g")
+    .data(nodes).join("g")
+    .call(d3.drag()
+      .on("start", (e, d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on("drag",  (e, d) => { d.fx = e.x; d.fy = e.y; })
+      .on("end",   (e, d) => { if (!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; })
+    );
+
+  // Node circles (size ∝ txns)
+  const rScale = d3.scaleSqrt().domain([20, 520]).range([12, 26]);
+
+  nodeG.append("circle")
+    .attr("r", d => rScale(d.txns))
+    .attr("fill", d => nodeColors[d.type])
+    .attr("opacity", 0.85)
+    .attr("stroke", "#06192D").attr("stroke-width", 2);
+
+  // Rail activity dots (small colored dots around node)
+  nodeG.append("circle")
+    .attr("r", d => rScale(d.txns) + 5)
+    .attr("fill", "none")
+    .attr("stroke", d => nodeColors[d.type])
+    .attr("stroke-width", 1)
+    .attr("opacity", 0.25);
+
+  // Party ID label
+  nodeG.append("text")
+    .attr("text-anchor", "middle").attr("dominant-baseline", "middle")
+    .attr("fill", "#fff").attr("font-size", 8).attr("font-weight", 700)
+    .attr("pointer-events", "none")
+    .text(d => d.id);
+
+  // Tooltip
+  const tip = document.getElementById("graphTip");
+  nodeG
+    .on("mouseover", function(event, d) {
+      d3.select(this).select("circle").attr("opacity", 1);
+      const connected = links.filter(l =>
+        (typeof l.source === "object" ? l.source.id : l.source) === d.id ||
+        (typeof l.target === "object" ? l.target.id : l.target) === d.id
+      );
+      const connectedRails = [...new Set(connected.map(l => l.type))];
+      tip.innerHTML = `
+        <div class="tg-name">${d.label}</div>
+        <div class="tg-row">ID: <span>${d.id}</span></div>
+        <div class="tg-row">Type: <span>${typeLabels[d.type]}</span></div>
+        <div class="tg-row">Transactions: <span>${d.txns.toLocaleString()}</span></div>
+        <div class="tg-row">Active rails: <span>${connectedRails.join(", ")}</span></div>
+        <div class="tg-row">Connections: <span>${connected.length}</span></div>
+      `;
+      const rect = wrap.getBoundingClientRect();
+      tip.style.left  = (event.clientX - rect.left + 12) + "px";
+      tip.style.top   = (event.clientY - rect.top  - 10) + "px";
+      tip.style.opacity = 1;
+    })
+    .on("mousemove", function(event) {
+      const rect = wrap.getBoundingClientRect();
+      tip.style.left = (event.clientX - rect.left + 12) + "px";
+      tip.style.top  = (event.clientY - rect.top  - 10) + "px";
+    })
+    .on("mouseout", function(event, d) {
+      d3.select(this).select("circle").attr("opacity", 0.85);
+      tip.style.opacity = 0;
+    });
+
+  sim.on("tick", () => {
+    link
+      .attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+    nodeG.attr("transform", d => `translate(${d.x},${d.y})`);
+    edgeLabel
+      .attr("x", d => (d.source.x + d.target.x) / 2)
+      .attr("y", d => (d.source.y + d.target.y) / 2 - 4);
+  });
+
+  // Highlight nodes with same party on link hover
+  link.on("mouseover", function(e, d) {
+    d3.select(this).attr("opacity", 0.85).attr("stroke-width", d.value * 1.4);
+  }).on("mouseout", function(e, d) {
+    d3.select(this).attr("opacity", 0.4).attr("stroke-width", d.value * 0.7);
+  });
+})();
+</script>
+</body>
+</html>
