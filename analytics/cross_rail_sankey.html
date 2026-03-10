@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>JHBI — Cross-Rail $ Flow</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Calibri", "Segoe UI", sans-serif;
+      background: #0A2342;
+      color: #ffffff;
+      min-height: 100vh;
+      padding: 28px 36px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.02em;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #7AAFC8;
+      margin-top: 4px;
+    }
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 20px;
+    }
+    .kpi-row {
+      display: flex;
+      gap: 14px;
+      font-size: 12px;
+    }
+    .kpi {
+      background: #065A82;
+      border-radius: 6px;
+      padding: 8px 16px;
+      text-align: center;
+    }
+    .kpi .num {
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .kpi .lbl {
+      color: #7AAFC8;
+      font-size: 11px;
+      margin-top: 1px;
+    }
+    #chart { width: 100%; }
+    svg { display: block; }
+
+    /* Tooltip */
+    .tooltip {
+      position: absolute;
+      background: #0A2342;
+      border: 1px solid #1C7293;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      max-width: 220px;
+    }
+    .tooltip .tt-title { font-weight: 700; font-size: 13px; color: #02C39A; margin-bottom: 4px; }
+    .tooltip .tt-row { color: #A8C4D8; margin-top: 2px; }
+    .tooltip .tt-row span { color: #ffffff; font-weight: 600; }
+
+    /* Toggle */
+    .toggle-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .toggle-btn {
+      background: #065A82;
+      border: 1px solid #1C7293;
+      color: #A8C4D8;
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .toggle-btn.active {
+      background: #02C39A;
+      border-color: #02C39A;
+      color: #0A2342;
+      font-weight: 700;
+    }
+    .note {
+      font-size: 11px;
+      color: #4A6080;
+      margin-top: 16px;
+      border-top: 1px solid #1A3558;
+      padding-top: 10px;
+    }
+    .note code {
+      background: #0D2D4A;
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-family: "Consolas", monospace;
+      color: #7AAFC8;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header-row">
+  <div>
+    <h1>JHBI — Cross-Rail Dollar Flow</h1>
+    <div class="subtitle">Inflow &amp; outflow by payment rail · Replace <code>QUERY_DATA</code> below with your BigQuery results</div>
+  </div>
+  <div class="kpi-row" id="kpiRow"></div>
+</div>
+
+<div class="toggle-row" id="periodBtns"></div>
+<div id="chart"></div>
+<div class="tooltip" id="tooltip"></div>
+
+<div class="note">
+  💡 To use live data, replace the <code>QUERY_DATA</code> array below with your
+  <code>SELECT payment_type, direction, SUM(settlement_amount) AS total FROM lake.unified_transactions WHERE status='SETTLED' GROUP BY 1,2</code>
+  results. Format: <code>{ period, payment_type, direction, total }</code>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────
+// REPLACE THIS with your BigQuery query results.
+// Columns: period (any string), payment_type, direction (CREDIT|DEBIT), total (number)
+// ─────────────────────────────────────────────────────────────────────────
+const QUERY_DATA = [
+  // Q1
+  { period: "Q1 2026", payment_type: "ACH",     direction: "CREDIT", total: 184_200_000 },
+  { period: "Q1 2026", payment_type: "ACH",     direction: "DEBIT",  total: 162_800_000 },
+  { period: "Q1 2026", payment_type: "WIRE",    direction: "CREDIT", total: 890_500_000 },
+  { period: "Q1 2026", payment_type: "WIRE",    direction: "DEBIT",  total: 940_200_000 },
+  { period: "Q1 2026", payment_type: "CARD",    direction: "CREDIT", total:  12_100_000 },
+  { period: "Q1 2026", payment_type: "CARD",    direction: "DEBIT",  total:  98_400_000 },
+  { period: "Q1 2026", payment_type: "ZELLE",   direction: "CREDIT", total:  34_600_000 },
+  { period: "Q1 2026", payment_type: "ZELLE",   direction: "DEBIT",  total:  31_200_000 },
+  { period: "Q1 2026", payment_type: "RTP",     direction: "CREDIT", total:  22_900_000 },
+  { period: "Q1 2026", payment_type: "RTP",     direction: "DEBIT",  total:  18_700_000 },
+  { period: "Q1 2026", payment_type: "FEDNOW",  direction: "CREDIT", total:  15_400_000 },
+  { period: "Q1 2026", payment_type: "FEDNOW",  direction: "DEBIT",  total:  12_100_000 },
+  { period: "Q1 2026", payment_type: "CHECK",   direction: "CREDIT", total:  44_300_000 },
+  { period: "Q1 2026", payment_type: "CHECK",   direction: "DEBIT",  total:  38_600_000 },
+  { period: "Q1 2026", payment_type: "BILLPAY", direction: "CREDIT", total:   3_200_000 },
+  { period: "Q1 2026", payment_type: "BILLPAY", direction: "DEBIT",  total:  28_900_000 },
+  // Q4 2025
+  { period: "Q4 2025", payment_type: "ACH",     direction: "CREDIT", total: 176_500_000 },
+  { period: "Q4 2025", payment_type: "ACH",     direction: "DEBIT",  total: 159_300_000 },
+  { period: "Q4 2025", payment_type: "WIRE",    direction: "CREDIT", total: 820_100_000 },
+  { period: "Q4 2025", payment_type: "WIRE",    direction: "DEBIT",  total: 874_900_000 },
+  { period: "Q4 2025", payment_type: "CARD",    direction: "CREDIT", total:  11_300_000 },
+  { period: "Q4 2025", payment_type: "CARD",    direction: "DEBIT",  total:  91_700_000 },
+  { period: "Q4 2025", payment_type: "ZELLE",   direction: "CREDIT", total:  30_100_000 },
+  { period: "Q4 2025", payment_type: "ZELLE",   direction: "DEBIT",  total:  28_400_000 },
+  { period: "Q4 2025", payment_type: "RTP",     direction: "CREDIT", total:  18_200_000 },
+  { period: "Q4 2025", payment_type: "RTP",     direction: "DEBIT",  total:  15_600_000 },
+  { period: "Q4 2025", payment_type: "FEDNOW",  direction: "CREDIT", total:  10_900_000 },
+  { period: "Q4 2025", payment_type: "FEDNOW",  direction: "DEBIT",  total:   8_700_000 },
+  { period: "Q4 2025", payment_type: "CHECK",   direction: "CREDIT", total:  50_800_000 },
+  { period: "Q4 2025", payment_type: "CHECK",   direction: "DEBIT",  total:  44_200_000 },
+  { period: "Q4 2025", payment_type: "BILLPAY", direction: "CREDIT", total:   2_900_000 },
+  { period: "Q4 2025", payment_type: "BILLPAY", direction: "DEBIT",  total:  26_100_000 },
+];
+
+// ─────────────────────────────────────────────────────────────────────────
+// Palette
+const PALETTE = {
+  ACH:     "#065A82",
+  WIRE:    "#1C7293",
+  CARD:    "#02C39A",
+  ZELLE:   "#F59E0B",
+  RTP:     "#7C3AED",
+  FEDNOW:  "#0891B2",
+  CHECK:   "#6B7280",
+  BILLPAY: "#DC2626",
+  INFLOW:  "#02C39A",
+  OUTFLOW: "#DC2626",
+};
+
+const fmt = d3.format("$,.3~s");
+const fmtFull = d3.format("$,.0f");
+const pct = d3.format(".1%");
+
+// ─────────────────────────────────────────────────────────────────────────
+// Period controls
+const periods = [...new Set(QUERY_DATA.map(d => d.period))];
+let activePeriod = periods[0];
+
+const btnContainer = document.getElementById("periodBtns");
+periods.forEach(p => {
+  const btn = document.createElement("button");
+  btn.className = "toggle-btn" + (p === activePeriod ? " active" : "");
+  btn.textContent = p;
+  btn.onclick = () => {
+    activePeriod = p;
+    document.querySelectorAll(".toggle-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    renderAll();
+  };
+  btnContainer.appendChild(btn);
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+function buildSankeyData(period) {
+  const rows = QUERY_DATA.filter(d => d.period === period);
+  const rails = [...new Set(rows.map(d => d.payment_type))];
+
+  // Nodes: INFLOW | rails | OUTFLOW
+  const nodeIndex = {};
+  const nodes = [];
+
+  function addNode(id, label, col) {
+    nodeIndex[id] = nodes.length;
+    nodes.push({ id, label, col });
+  }
+
+  addNode("__INFLOW__", "INFLOW", 0);
+  rails.forEach(r => addNode(r, r, 1));
+  addNode("__OUTFLOW__", "OUTFLOW", 2);
+
+  const links = [];
+  rows.forEach(d => {
+    if (d.direction === "CREDIT") {
+      links.push({ source: nodeIndex["__INFLOW__"], target: nodeIndex[d.payment_type], value: d.total, rail: d.payment_type, dir: "CREDIT" });
+    } else {
+      links.push({ source: nodeIndex[d.payment_type], target: nodeIndex["__OUTFLOW__"], value: d.total, rail: d.payment_type, dir: "DEBIT" });
+    }
+  });
+
+  return { nodes, links };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+function renderKPIs(period) {
+  const rows = QUERY_DATA.filter(d => d.period === period);
+  const totalIn  = d3.sum(rows.filter(d => d.direction === "CREDIT"), d => d.total);
+  const totalOut = d3.sum(rows.filter(d => d.direction === "DEBIT"),  d => d.total);
+  const net = totalIn - totalOut;
+
+  const kpis = [
+    { num: fmt(totalIn),  lbl: "Total Inflow",   color: "#02C39A" },
+    { num: fmt(totalOut), lbl: "Total Outflow",  color: "#DC2626" },
+    { num: (net >= 0 ? "+" : "") + fmt(Math.abs(net)), lbl: "Net Position", color: net >= 0 ? "#02C39A" : "#DC2626" },
+  ];
+  const row = document.getElementById("kpiRow");
+  row.innerHTML = kpis.map(k => `
+    <div class="kpi">
+      <div class="num" style="color:${k.color}">${k.num}</div>
+      <div class="lbl">${k.lbl}</div>
+    </div>`).join("");
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+function renderChart(period) {
+  const container = document.getElementById("chart");
+  container.innerHTML = "";
+
+  const W = container.clientWidth || 900;
+  const H = Math.max(460, W * 0.48);
+  const margin = { top: 10, right: 140, bottom: 10, left: 140 };
+
+  const svg = d3.select("#chart").append("svg")
+    .attr("width", W).attr("height", H);
+
+  const { nodes, links } = buildSankeyData(period);
+
+  const sankey = d3.sankey()
+    .nodeId(d => d.index)
+    .nodeWidth(22)
+    .nodePadding(14)
+    .extent([[margin.left, margin.top], [W - margin.right, H - margin.bottom]]);
+
+  const graph = sankey({ nodes: nodes.map((n,i) => ({...n, index:i})), links: links.map(l => ({...l})) });
+
+  // ── Links ──────────────────────────────────────────────────
+  const link = svg.append("g").selectAll("path")
+    .data(graph.links)
+    .join("path")
+    .attr("d", d3.sankeyLinkHorizontal())
+    .attr("stroke", d => PALETTE[d.rail] || "#1C7293")
+    .attr("stroke-width", d => Math.max(1.5, d.width))
+    .attr("fill", "none")
+    .attr("opacity", 0.38)
+    .on("mouseover", function(event, d) {
+      d3.select(this).attr("opacity", 0.72);
+      const rows = QUERY_DATA.filter(r => r.period === period && r.payment_type === d.rail);
+      const inAmt  = (rows.find(r => r.direction === "CREDIT") || {}).total || 0;
+      const outAmt = (rows.find(r => r.direction === "DEBIT")  || {}).total || 0;
+      const net = inAmt - outAmt;
+      showTooltip(event, `
+        <div class="tt-title">${d.rail}</div>
+        <div class="tt-row">Inflow: <span>${fmtFull(inAmt)}</span></div>
+        <div class="tt-row">Outflow: <span>${fmtFull(outAmt)}</span></div>
+        <div class="tt-row">Net: <span style="color:${net>=0?'#02C39A':'#DC2626'}">${net>=0?"+":""}${fmtFull(net)}</span></div>
+      `);
+    })
+    .on("mousemove", moveTooltip)
+    .on("mouseout", function() {
+      d3.select(this).attr("opacity", 0.38);
+      hideTooltip();
+    });
+
+  // ── Nodes ──────────────────────────────────────────────────
+  const node = svg.append("g").selectAll("g")
+    .data(graph.nodes)
+    .join("g");
+
+  node.append("rect")
+    .attr("x", d => d.x0)
+    .attr("y", d => d.y0)
+    .attr("width", d => d.x1 - d.x0)
+    .attr("height", d => Math.max(4, d.y1 - d.y0))
+    .attr("fill", d => {
+      if (d.id === "__INFLOW__")  return "#02C39A";
+      if (d.id === "__OUTFLOW__") return "#DC2626";
+      return PALETTE[d.id] || "#1C7293";
+    })
+    .attr("rx", 3)
+    .on("mouseover", function(event, d) {
+      if (d.id === "__INFLOW__" || d.id === "__OUTFLOW__") return;
+      const rows = QUERY_DATA.filter(r => r.period === period && r.payment_type === d.id);
+      const inAmt  = (rows.find(r => r.direction === "CREDIT") || {}).total || 0;
+      const outAmt = (rows.find(r => r.direction === "DEBIT")  || {}).total || 0;
+      const net = inAmt - outAmt;
+      const totalIn = d3.sum(QUERY_DATA.filter(r => r.period === period && r.direction === "CREDIT"), r => r.total);
+      showTooltip(event, `
+        <div class="tt-title">${d.id}</div>
+        <div class="tt-row">Inflow: <span>${fmtFull(inAmt)}</span></div>
+        <div class="tt-row">Outflow: <span>${fmtFull(outAmt)}</span></div>
+        <div class="tt-row">Net: <span style="color:${net>=0?'#02C39A':'#DC2626'}">${net>=0?"+":""}${fmtFull(net)}</span></div>
+        <div class="tt-row">Share of inflow: <span>${pct(inAmt/totalIn)}</span></div>
+      `);
+    })
+    .on("mousemove", moveTooltip)
+    .on("mouseout", hideTooltip);
+
+  // ── Labels ──────────────────────────────────────────────────
+  node.append("text")
+    .attr("x", d => d.col === 0 ? d.x0 - 8 : d.col === 2 ? d.x1 + 8 : (d.x0 + d.x1) / 2)
+    .attr("y", d => (d.y0 + d.y1) / 2)
+    .attr("dy", "0.35em")
+    .attr("text-anchor", d => d.col === 0 ? "end" : d.col === 2 ? "start" : "middle")
+    .attr("fill", d => {
+      if (d.id === "__INFLOW__")  return "#02C39A";
+      if (d.id === "__OUTFLOW__") return "#DC2626";
+      return "#FFFFFF";
+    })
+    .style("font-family", "Calibri, Segoe UI, sans-serif")
+    .style("font-size", d => (d.id === "__INFLOW__" || d.id === "__OUTFLOW__") ? "14px" : "12px")
+    .style("font-weight", d => (d.id === "__INFLOW__" || d.id === "__OUTFLOW__") ? "700" : "600")
+    .text(d => d.label === "__INFLOW__" ? "INFLOW" : d.label === "__OUTFLOW__" ? "OUTFLOW" : d.label);
+
+  // Value labels under rail names
+  node.filter(d => d.col === 1).append("text")
+    .attr("x", d => (d.x0 + d.x1) / 2)
+    .attr("y", d => (d.y0 + d.y1) / 2 + 14)
+    .attr("text-anchor", "middle")
+    .attr("fill", "#7AAFC8")
+    .style("font-family", "Calibri, Segoe UI, sans-serif")
+    .style("font-size", "10px")
+    .text(d => {
+      const rows = QUERY_DATA.filter(r => r.period === period && r.payment_type === d.id);
+      const vol = d3.sum(rows, r => r.total);
+      return fmt(vol);
+    });
+
+  // Total labels on INFLOW / OUTFLOW
+  graph.nodes.filter(d => d.id === "__INFLOW__" || d.id === "__OUTFLOW__").forEach(d => {
+    const dir = d.id === "__INFLOW__" ? "CREDIT" : "DEBIT";
+    const total = d3.sum(QUERY_DATA.filter(r => r.period === period && r.direction === dir), r => r.total);
+    svg.append("text")
+      .attr("x", d.id === "__INFLOW__" ? d.x0 - 8 : d.x1 + 8)
+      .attr("y", (d.y0 + d.y1) / 2 + 20)
+      .attr("text-anchor", d.id === "__INFLOW__" ? "end" : "start")
+      .attr("fill", d.id === "__INFLOW__" ? "#02C39A" : "#DC2626")
+      .style("font-size", "12px")
+      .style("font-family", "Calibri, Segoe UI, sans-serif")
+      .text(fmtFull(total));
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+const tooltip = document.getElementById("tooltip");
+function showTooltip(event, html) {
+  tooltip.innerHTML = html;
+  tooltip.style.opacity = 1;
+  moveTooltip(event);
+}
+function moveTooltip(event) {
+  tooltip.style.left = (event.pageX + 14) + "px";
+  tooltip.style.top  = (event.pageY - 28) + "px";
+}
+function hideTooltip() { tooltip.style.opacity = 0; }
+
+function renderAll() {
+  renderKPIs(activePeriod);
+  renderChart(activePeriod);
+}
+
+renderAll();
+window.addEventListener("resize", renderAll);
+</script>
+</body>
+</html>
