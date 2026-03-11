@@ -362,6 +362,7 @@ footer a { color: var(--teal); }
   <div class="schema-tabs">
     <button class="stab active" onclick="showTab('silver')">Silver Layer</button>
     <button class="stab" onclick="showTab('identity')">Identity v3</button>
+    <button class="stab" onclick="showTab('partyddl')">Party DDL</button>
     <button class="stab" onclick="showTab('railjson')">Rail JSON</button>
     <button class="stab" onclick="showTab('gold')">Gold</button>
     <button class="stab" onclick="showTab('raw')">Raw</button>
@@ -442,6 +443,197 @@ footer a { color: var(--teal); }
         <tr class="highlight-row"><td>identity.party_relationship</td><td>Typed relationships between parties <span style="color:var(--mint);font-size:10px">▸ NEW v3</span></td><td>party_id_a, party_id_b, relationship_type (JOINT_ACCOUNT|AUTHORIZED_SIGNER|PARENT_SUBSIDIARY|BENEFICIAL_OWNER|TRUST_BENEFICIARY|GUARANTOR|CORRESPONDENT_BANK), role_a, role_b, ownership_percentage</td></tr>
         <tr class="highlight-row"><td>identity.biller_registry</td><td>BillPay billers as first-class party records <span style="color:var(--mint);font-size:10px">▸ NEW v3</span></td><td>biller_registry_id → party_id, biller_id, standard_biller_id, biller_category, aggregator_name (IPAY|PAYRAILZ|BPS), payment_methods ARRAY&lt;STRING&gt;, biller_fi_routing</td></tr>
         <tr><td>identity.party_resolution_event</td><td>Block-and-key audit log (replaces ir_audit_log)</td><td>resolution_event_id, source_party_id, target_party_id, <strong style="color:var(--amber)">block_key</strong>, <strong style="color:var(--amber)">match_rule</strong>, resolution_method (EXACT_TOKEN|ROUTING_ACCOUNT|PROXY_EXACT|NAME_ROUTING|MANUAL|NEW_PARTY), confidence_score, match_attributes JSONB</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── PARTY DDL ─────────────────────────────────────────
+       Source: schemas/identity/party_identity_v3.sql
+       Full column-level DDL for the four core party tables.
+       Originator and beneficiary on unified_transactions both
+       resolve to identity.party records through these tables.
+       Note: ALL PII stored as vault tokens — never plain text.
+  ──────────────────────────────────────────────────────── -->
+  <div class="schema-panel hidden" id="tab-partyddl">
+    <div style="padding:14px 18px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border);background:#04111E">
+      <span style="font-size:11px;font-weight:700;color:var(--muted)">JUMP TO:</span>
+      <a href="#sec-party" style="font-size:11px;color:var(--mint);font-weight:600">identity.party</a>
+      <a href="#sec-acct" style="font-size:11px;color:var(--mint);font-weight:600">party_account</a>
+      <a href="#sec-rail-ref" style="font-size:11px;color:var(--mint);font-weight:600">party_account_rail_ref</a>
+      <a href="#sec-rel" style="font-size:11px;color:var(--mint);font-weight:600">party_relationship</a>
+      <a href="#sec-addr" style="font-size:11px;color:var(--mint);font-weight:600">party_address</a>
+      <a href="#sec-biller" style="font-size:11px;color:var(--mint);font-weight:600">biller_registry</a>
+      <a href="#sec-ire" style="font-size:11px;color:var(--amber);font-weight:600">party_resolution_event ← block_key / match_rule</a>
+    </div>
+
+    <!-- How originator / beneficiary connect -->
+    <div style="padding:12px 18px;background:#020E1C;border-bottom:1px solid var(--border);font-size:11px;color:var(--dk);line-height:1.7">
+      <strong style="color:#fff">Originator → Destination flow:</strong>
+      &nbsp; <code style="color:var(--mint)">unified_transactions.originator_party_id</code>
+      <span style="color:var(--muted)">→</span>
+      <code style="color:var(--mint)">identity.party.party_id</code>
+      <span style="color:var(--muted)">→</span>
+      <code style="color:var(--mint)">identity.party_account</code>
+      <span style="color:var(--muted)">→</span>
+      <code style="color:var(--mint)">identity.party_account_rail_ref</code>
+      &nbsp;|&nbsp; Same path for <code style="color:var(--teal)">beneficiary_party_id</code>.
+      &nbsp; Block-and-key fields live in <code style="color:var(--amber)">identity.party_resolution_event</code>.
+    </div>
+
+    <!-- 1. identity.party -->
+    <div id="sec-party" style="padding:10px 18px 4px;background:#02081A;font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--mint)">identity.party — CANONICAL PARTY MASTER</div>
+    <table class="col-table">
+      <thead><tr><th>COLUMN</th><th>TYPE</th><th>NOTES</th></tr></thead>
+      <tbody>
+        <tr class="highlight-row"><td><span class="badge-key">PK</span>party_id</td><td class="type">UUID</td><td>Globally unique canonical party identifier</td></tr>
+        <tr><td>party_type</td><td class="type">TEXT NOT NULL</td><td>INDIVIDUAL | BUSINESS | BILLER | GOVERNMENT | FINANCIAL_INSTITUTION</td></tr>
+        <tr><td>party_subtype</td><td class="type">TEXT</td><td>LLC | SOLE_PROPRIETOR | NONPROFIT | CREDIT_UNION | CORRESPONDENT_BANK | …</td></tr>
+        <tr><td>name_token</td><td class="type">TEXT</td><td>Vault token → legal name (PII)</td></tr>
+        <tr><td>display_name</td><td class="type">TEXT</td><td>Non-sensitive short label for UI / reporting</td></tr>
+        <tr><td>tax_id_token</td><td class="type">TEXT</td><td>Vault token → SSN / EIN / ITIN (PII)</td></tr>
+        <tr><td>country_code</td><td class="type">CHAR(2) NOT NULL</td><td>ISO 3166 · DEFAULT 'US'</td></tr>
+        <tr><td>state_province</td><td class="type">TEXT</td><td>State or province code</td></tr>
+        <tr><td>resolution_status</td><td class="type">TEXT NOT NULL</td><td>UNRESOLVED | CANDIDATE | CONFIRMED | MERGED | SUPERSEDED</td></tr>
+        <tr><td>resolution_confidence</td><td class="type">NUMERIC(5,4)</td><td>0.0000 – 1.0000 · set by IR service</td></tr>
+        <tr><td>merged_into_party_id</td><td class="type">UUID</td><td>Surviving party_id when this record is MERGED</td></tr>
+        <tr><td>tenant_id</td><td class="type">TEXT NOT NULL</td><td>FI tenant identifier (RLS key)</td></tr>
+        <tr><td>created_at / updated_at</td><td class="type">TIMESTAMPTZ</td><td>Audit timestamps</td></tr>
+        <tr><td>schema_version</td><td class="type">TEXT</td><td>DEFAULT 'v3'</td></tr>
+      </tbody>
+    </table>
+
+    <!-- 2. identity.party_account -->
+    <div id="sec-acct" style="padding:10px 18px 4px;background:#02081A;font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--mint)">identity.party_account — PAYMENT INSTRUMENT (originator / beneficiary account)</div>
+    <table class="col-table">
+      <thead><tr><th>COLUMN</th><th>TYPE</th><th>NOTES</th></tr></thead>
+      <tbody>
+        <tr class="highlight-row"><td><span class="badge-key">PK</span>account_id</td><td class="type">UUID</td><td>Unique account record</td></tr>
+        <tr class="highlight-row"><td><span class="badge-fk">FK</span>party_id</td><td class="type">UUID NOT NULL</td><td>→ identity.party · many accounts per party</td></tr>
+        <tr><td>account_type</td><td class="type">TEXT NOT NULL</td><td>CHECKING | SAVINGS | MONEY_MARKET | LOAN | CARD | BILLER | PREPAID | WALLET | UNKNOWN</td></tr>
+        <tr><td>account_subtype</td><td class="type">TEXT</td><td>Free-form sub-classification</td></tr>
+        <tr><td>is_on_us</td><td class="type">BOOLEAN NOT NULL</td><td>TRUE = account held at this FI tenant · DEFAULT FALSE</td></tr>
+        <tr><td colspan="3" style="background:#020E1C;color:var(--muted);font-size:10px;padding:6px 16px">— Domestic Holding FI —</td></tr>
+        <tr><td>institution_routing_number</td><td class="type">TEXT</td><td>ABA 9-digit routing / transit number</td></tr>
+        <tr><td>institution_name</td><td class="type">TEXT</td><td>Human-readable FI name</td></tr>
+        <tr><td>institution_country_code</td><td class="type">CHAR(2)</td><td>DEFAULT 'US'</td></tr>
+        <tr><td colspan="3" style="background:#020E1C;color:var(--muted);font-size:10px;padding:6px 16px">— International Holding FI (v3 NEW) —</td></tr>
+        <tr><td>institution_swift_bic</td><td class="type">TEXT</td><td>SWIFT BIC (e.g. CHASUS33) · non-sensitive</td></tr>
+        <tr><td>institution_iban_token</td><td class="type">TEXT</td><td>Vault token → receiving IBAN (PCI — contains account number)</td></tr>
+        <tr><td>institution_iban_country_code</td><td class="type">CHAR(2)</td><td>Non-sensitive 2-char IBAN country prefix</td></tr>
+        <tr><td colspan="3" style="background:#020E1C;color:var(--muted);font-size:10px;padding:6px 16px">— Account Identifier —</td></tr>
+        <tr><td>account_number_token</td><td class="type">TEXT NOT NULL</td><td>Vault token → DDA / account number (PCI)</td></tr>
+        <tr><td>account_token_type</td><td class="type">TEXT NOT NULL</td><td>INTERNAL | NETWORK | ALIAS | CARD_PAN | BILLER_REF | IBAN · DEFAULT 'INTERNAL'</td></tr>
+        <tr><td colspan="3" style="background:#020E1C;color:var(--muted);font-size:10px;padding:6px 16px">— Card-Specific —</td></tr>
+        <tr><td>card_brand</td><td class="type">TEXT</td><td>VISA | MASTERCARD | AMEX | …</td></tr>
+        <tr><td>card_last_four</td><td class="type">TEXT</td><td>Non-sensitive display digits only</td></tr>
+        <tr><td>card_expiry_token</td><td class="type">TEXT</td><td>Vault token → expiry (PCI)</td></tr>
+        <tr><td colspan="3" style="background:#020E1C;color:var(--muted);font-size:10px;padding:6px 16px">— Proxy / Alias (Zelle, email, phone) —</td></tr>
+        <tr><td>proxy_type</td><td class="type">TEXT</td><td>EMAIL | PHONE | ZELLE_TOKEN | ALIAS</td></tr>
+        <tr><td>proxy_value_token</td><td class="type">TEXT</td><td>Vault token → alias value (PII)</td></tr>
+        <tr><td>account_status</td><td class="type">TEXT NOT NULL</td><td>ACTIVE | CLOSED | SUSPENDED | BLOCKED | UNKNOWN</td></tr>
+        <tr><td>tenant_id</td><td class="type">TEXT NOT NULL</td><td>FI tenant identifier (RLS key)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- 3. identity.party_account_rail_ref -->
+    <div id="sec-rail-ref" style="padding:10px 18px 4px;background:#02081A;font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--mint)">identity.party_account_rail_ref — PER-RAIL IDENTIFIERS (routing, BIC, participant IDs)</div>
+    <table class="col-table">
+      <thead><tr><th>COLUMN</th><th>TYPE</th><th>NOTES</th></tr></thead>
+      <tbody>
+        <tr class="highlight-row"><td><span class="badge-key">PK</span>rail_ref_id</td><td class="type">UUID</td><td>Unique rail reference record</td></tr>
+        <tr class="highlight-row"><td><span class="badge-fk">FK</span>account_id</td><td class="type">UUID NOT NULL</td><td>→ identity.party_account</td></tr>
+        <tr><td>rail_type</td><td class="type">TEXT NOT NULL</td><td>ACH | WIRE | CARD | ZELLE | RTP | FEDNOW | CHECK | RDC | BILLPAY</td></tr>
+        <tr><td>rail_identifier_type</td><td class="type">TEXT NOT NULL</td><td>ROUTING_ACCOUNT | SWIFT_BIC | IBAN | CARD_TOKEN | ZELLE_ALIAS | RTP_PARTICIPANT_ID | FEDNOW_PARTICIPANT_ID | BILLER_ID | CHECK_MICR</td></tr>
+        <tr><td>rail_identifier_token</td><td class="type">TEXT</td><td>Vault-tokenized value (account numbers, card PANs, IBANs)</td></tr>
+        <tr><td>rail_identifier_plain</td><td class="type">TEXT</td><td>Non-sensitive plain value (routing #, BIC, participant ID)</td></tr>
+        <tr><td>is_receiving_participant</td><td class="type">BOOLEAN</td><td>Party can receive on this rail</td></tr>
+        <tr><td>is_originating_participant</td><td class="type">BOOLEAN</td><td>Party can originate on this rail</td></tr>
+        <tr><td>participant_status</td><td class="type">TEXT</td><td>ACTIVE | SUSPENDED | CLOSED</td></tr>
+        <tr><td colspan="3" style="background:#020E1C;color:var(--muted);font-size:10px;padding:4px 16px">Unique constraint: (account_id, rail_type, rail_identifier_type)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- 4. identity.party_relationship -->
+    <div id="sec-rel" style="padding:10px 18px 4px;background:#02081A;font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--mint)">identity.party_relationship — TYPED PARTY RELATIONSHIPS (UBO, joint, hierarchy) · v3 NEW</div>
+    <table class="col-table">
+      <thead><tr><th>COLUMN</th><th>TYPE</th><th>NOTES</th></tr></thead>
+      <tbody>
+        <tr class="highlight-row"><td><span class="badge-key">PK</span>relationship_id</td><td class="type">UUID</td><td></td></tr>
+        <tr class="highlight-row"><td><span class="badge-fk">FK</span>party_id_a</td><td class="type">UUID NOT NULL</td><td>→ identity.party · "from" side</td></tr>
+        <tr class="highlight-row"><td><span class="badge-fk">FK</span>party_id_b</td><td class="type">UUID NOT NULL</td><td>→ identity.party · "to" side</td></tr>
+        <tr><td>relationship_type</td><td class="type">TEXT NOT NULL</td><td>JOINT_ACCOUNT | AUTHORIZED_SIGNER | PARENT_SUBSIDIARY | BENEFICIAL_OWNER | TRUST_BENEFICIARY | GUARANTOR | POWER_OF_ATTORNEY | CORRESPONDENT_BANK</td></tr>
+        <tr><td>role_a</td><td class="type">TEXT</td><td>e.g. OWNER | PARENT | TRUSTEE | GRANTOR | GUARANTOR</td></tr>
+        <tr><td>role_b</td><td class="type">TEXT</td><td>e.g. JOINT_HOLDER | SUBSIDIARY | BENEFICIARY | PRINCIPAL</td></tr>
+        <tr><td>ownership_percentage</td><td class="type">NUMERIC(5,2)</td><td>For BENEFICIAL_OWNER / PARENT_SUBSIDIARY · e.g. 51.00</td></tr>
+        <tr><td>effective_date</td><td class="type">DATE NOT NULL</td><td>DEFAULT CURRENT_DATE</td></tr>
+        <tr><td>expiry_date</td><td class="type">DATE</td><td>NULL = no end date</td></tr>
+        <tr><td>relationship_source</td><td class="type">TEXT</td><td>CIF | KYB | MANUAL | OFAC_SCREENING | ADMIN_OVERRIDE</td></tr>
+        <tr><td>verified / verified_at / verified_by</td><td class="type">BOOL / TIMESTAMPTZ / TEXT</td><td>KYC/KYB verification audit trail</td></tr>
+        <tr><td>is_active</td><td class="type">BOOLEAN NOT NULL</td><td>DEFAULT TRUE · soft-delete via FALSE</td></tr>
+      </tbody>
+    </table>
+
+    <!-- 5. identity.party_address -->
+    <div id="sec-addr" style="padding:10px 18px 4px;background:#02081A;font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--mint)">identity.party_address — ADDRESS + IBAN / BIC / SWIFT (international wire fields)</div>
+    <table class="col-table">
+      <thead><tr><th>COLUMN</th><th>TYPE</th><th>NOTES</th></tr></thead>
+      <tbody>
+        <tr class="highlight-row"><td><span class="badge-key">PK</span>address_id</td><td class="type">UUID</td><td></td></tr>
+        <tr class="highlight-row"><td><span class="badge-fk">FK</span>party_id</td><td class="type">UUID NOT NULL</td><td>→ identity.party</td></tr>
+        <tr><td>address_type</td><td class="type">TEXT NOT NULL</td><td>MAILING | LEGAL | REGISTERED | BILLING | PHYSICAL | CORRESPONDENT</td></tr>
+        <tr><td>city / state_province / postal_code</td><td class="type">TEXT</td><td>Non-sensitive geographic context</td></tr>
+        <tr><td>country_code</td><td class="type">CHAR(2) NOT NULL</td><td>ISO 3166 · DEFAULT 'US'</td></tr>
+        <tr><td>address_line1_token / address_line2_token</td><td class="type">TEXT</td><td>Vault tokens → street address (PII)</td></tr>
+        <tr><td colspan="3" style="background:#020E1C;color:var(--muted);font-size:10px;padding:6px 16px">— International Wire (v3 NEW — SWIFT MT103 / ISO 20022 pacs.008) —</td></tr>
+        <tr><td>swift_bic</td><td class="type">TEXT</td><td>Receiving bank BIC · 8 or 11 chars · non-sensitive</td></tr>
+        <tr><td>correspondent_bank_bic</td><td class="type">TEXT</td><td>Intermediary / correspondent bank BIC</td></tr>
+        <tr><td>correspondent_bank_name</td><td class="type">TEXT</td><td>Human-readable correspondent bank name</td></tr>
+        <tr><td>iban_token</td><td class="type">TEXT</td><td>Vault token → IBAN (contains account number → PCI)</td></tr>
+        <tr><td>iban_display_last_four</td><td class="type">TEXT</td><td>Non-sensitive last 4 of IBAN for display</td></tr>
+        <tr><td>iban_country_code</td><td class="type">CHAR(2)</td><td>Non-sensitive 2-char IBAN country code</td></tr>
+        <tr><td>bank_name</td><td class="type">TEXT</td><td>Foreign bank name · non-sensitive</td></tr>
+        <tr><td>is_primary</td><td class="type">BOOLEAN NOT NULL</td><td>DEFAULT TRUE</td></tr>
+      </tbody>
+    </table>
+
+    <!-- 6. identity.biller_registry -->
+    <div id="sec-biller" style="padding:10px 18px 4px;background:#02081A;font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--mint)">identity.biller_registry — BILLPAY BILLERS AS FIRST-CLASS PARTY RECORDS · v3 NEW</div>
+    <table class="col-table">
+      <thead><tr><th>COLUMN</th><th>TYPE</th><th>NOTES</th></tr></thead>
+      <tbody>
+        <tr class="highlight-row"><td><span class="badge-key">PK</span>biller_registry_id</td><td class="type">UUID</td><td></td></tr>
+        <tr class="highlight-row"><td><span class="badge-fk">FK</span>party_id</td><td class="type">UUID NOT NULL</td><td>→ identity.party (party_type = BILLER)</td></tr>
+        <tr><td>biller_id</td><td class="type">TEXT NOT NULL</td><td>Primary external biller ID from aggregator</td></tr>
+        <tr><td>standard_biller_id</td><td class="type">TEXT</td><td>Industry-standard ID (NACHA BillerXchange, Fiserv eBill)</td></tr>
+        <tr><td>biller_category</td><td class="type">TEXT NOT NULL</td><td>UTILITIES | TELECOM | INSURANCE | MORTGAGE | AUTO_LOAN | CREDIT_CARD | GOVERNMENT | HEALTHCARE | SUBSCRIPTION | OTHER</td></tr>
+        <tr><td>biller_category_code</td><td class="type">TEXT</td><td>SIC or NAICS code</td></tr>
+        <tr><td>aggregator_name</td><td class="type">TEXT NOT NULL</td><td>IPAY | PAYRAILZ | BPS | CHECKFREE | OTHER</td></tr>
+        <tr><td>payment_methods</td><td class="type">TEXT[] NOT NULL</td><td>CHECK | ACH | RTP | CARD | FEDNOW · DEFAULT '{CHECK,ACH}'</td></tr>
+        <tr><td>payable_to_name</td><td class="type">TEXT</td><td>Printed on paper checks (e.g. "AT&amp;T Mobility")</td></tr>
+        <tr><td>biller_fi_routing</td><td class="type">TEXT</td><td>ABA routing of biller's receiving bank</td></tr>
+        <tr><td>biller_fi_account_token</td><td class="type">TEXT</td><td>Vault token → biller's receiving account (PCI)</td></tr>
+        <tr><td>is_active / effective_date / expiry_date</td><td class="type">BOOL / DATE / DATE</td><td>Temporal validity</td></tr>
+        <tr><td colspan="3" style="background:#020E1C;color:var(--muted);font-size:10px;padding:4px 16px">Unique constraint: (aggregator_name, biller_id, tenant_id)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- 7. identity.party_resolution_event -->
+    <div id="sec-ire" style="padding:10px 18px 4px;background:#1A0E00;font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--amber)">identity.party_resolution_event — BLOCK-AND-KEY AUDIT LOG (block_key + match_rule live here, NOT on fact table)</div>
+    <table class="col-table">
+      <thead><tr><th>COLUMN</th><th>TYPE</th><th>NOTES</th></tr></thead>
+      <tbody>
+        <tr class="highlight-row"><td><span class="badge-key">PK</span>resolution_event_id</td><td class="type">UUID</td><td></td></tr>
+        <tr class="highlight-row"><td><span class="badge-fk">FK</span>source_party_id</td><td class="type">UUID NOT NULL</td><td>→ identity.party · the party being resolved</td></tr>
+        <tr class="highlight-row"><td><span class="badge-fk">FK</span>target_party_id</td><td class="type">UUID</td><td>→ identity.party · surviving record (NULL for NEW_PARTY)</td></tr>
+        <tr><td>event_type</td><td class="type">TEXT NOT NULL</td><td>MATCH_CANDIDATE | MATCH_CONFIRMED | MERGE | SPLIT | ALIAS_CREATED | SUPERSEDED | NEW_PARTY</td></tr>
+        <tr><td>resolution_method</td><td class="type">TEXT NOT NULL</td><td>EXACT_TOKEN | ROUTING_ACCOUNT | PROXY_EXACT | NAME_ROUTING | MANUAL | ADMIN_OVERRIDE | NEW_PARTY</td></tr>
+        <tr><td style="color:var(--amber);font-weight:700">block_key</td><td class="type">TEXT</td><td><span class="badge-fk" style="background:#2E1E00;color:var(--amber)">MDM</span> Narrowing key · e.g. <code style="color:var(--muted)">routing:021000021</code> · <code style="color:var(--muted)">proxy:hash:abc123</code></td></tr>
+        <tr><td style="color:var(--amber);font-weight:700">match_rule</td><td class="type">TEXT</td><td><span class="badge-fk" style="background:#2E1E00;color:var(--amber)">MDM</span> Rule that fired · e.g. <code style="color:var(--muted)">EXACT_TOKEN:originator_account_token</code> · <code style="color:var(--muted)">ROUTING_LAST4:odfi+acct_last4</code></td></tr>
+        <tr><td>confidence_score</td><td class="type">NUMERIC(5,4)</td><td>0.0000 – 1.0000 · EXACT_TOKEN = 1.00, NEW_PARTY = 0.00</td></tr>
+        <tr><td>match_attributes</td><td class="type">JSONB</td><td>Snapshot of compared fields, their values, and match result per field</td></tr>
+        <tr><td>resolved_by / resolved_at</td><td class="type">TEXT / TIMESTAMPTZ</td><td>Audit trail · DEFAULT 'system' / now()</td></tr>
+        <tr><td>notes</td><td class="type">TEXT</td><td>Free-text notes for MANUAL / ADMIN_OVERRIDE events</td></tr>
+        <tr><td colspan="3" style="background:#1A0E00;color:var(--amber);font-size:10px;padding:6px 16px">Indexes: source_party_id, block_key, match_rule+confidence_score</td></tr>
       </tbody>
     </table>
   </div>
