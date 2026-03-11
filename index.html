@@ -357,57 +357,114 @@ footer a { color: var(--teal); }
 <div class="section" id="schemas">
   <div class="sec-eyebrow">BIGQUERY DDL</div>
   <div class="sec-title">Schema files</div>
-  <div class="sec-sub">All tables target GCP BigQuery with partitioning, clustering, and NOT ENFORCED constraints.</div>
+  <div class="sec-sub">All tables target GCP BigQuery with partitioning, clustering, and NOT ENFORCED constraints. Block-and-key MDM fields (block_key, match_rule) live in <code style="color:var(--mint);font-family:Consolas;font-size:12px">identity.party_resolution_event</code> — not on the fact table.</div>
 
   <div class="schema-tabs">
     <button class="stab active" onclick="showTab('silver')">Silver Layer</button>
-    <button class="stab" onclick="showTab('identity')">Identity</button>
+    <button class="stab" onclick="showTab('identity')">Identity v3</button>
+    <button class="stab" onclick="showTab('railjson')">Rail JSON</button>
     <button class="stab" onclick="showTab('gold')">Gold</button>
     <button class="stab" onclick="showTab('raw')">Raw</button>
     <button class="stab" onclick="showTab('meta')">Metadata</button>
   </div>
 
+  <!-- ── SILVER ─────────────────────────────────────────────
+       Source: schemas/silver/unified_transactions_bigquery.sql
+       Note: block_key / match_rule are NOT fact-table columns.
+       They live in identity.party_resolution_event. FX fields
+       (fx_rate, original_currency) are in rail_details_json for
+       WIRE — they are not first-class columns on this table.
+  ──────────────────────────────────────────────────────── -->
   <div class="schema-panel" id="tab-silver">
     <table class="col-table">
       <thead><tr><th>COLUMN</th><th>TYPE</th><th>NOTES</th></tr></thead>
       <tbody>
-        <tr class="highlight-row"><td><span class="badge-key">PK</span>transaction_id</td><td class="type">STRING</td><td>Vault-generated UUID</td></tr>
-        <tr><td>tenant_id</td><td class="type">STRING</td><td>FI tenant identifier</td></tr>
-        <tr><td>payment_type</td><td class="type">STRING</td><td>ACH | WIRE | CARD | ZELLE | RTP | FEDNOW | CHECK | BILLPAY</td></tr>
-        <tr><td>status</td><td class="type">STRING</td><td>SETTLED | PENDING | FAILED | RETURNED</td></tr>
-        <tr><td>direction</td><td class="type">STRING</td><td>CREDIT | DEBIT</td></tr>
-        <tr><td>settlement_amount</td><td class="type">NUMERIC</td><td>USD settlement value</td></tr>
-        <tr><td>original_amount</td><td class="type">NUMERIC</td><td>Amount in originating currency</td></tr>
-        <tr><td>original_currency_code</td><td class="type">STRING</td><td>ISO 4217</td></tr>
-        <tr><td>fx_rate</td><td class="type">NUMERIC</td><td>Rate at time of settlement</td></tr>
-        <tr><td>fx_rate_source</td><td class="type">STRING</td><td>ECB | FED | INTERNAL</td></tr>
-        <tr><td>fx_rate_timestamp</td><td class="type">TIMESTAMP</td><td>Rate capture time</td></tr>
-        <tr><td>fx_charges_borne_by</td><td class="type">STRING</td><td>OUR | BEN | SHA</td></tr>
-        <tr><td>settlement_currency_code</td><td class="type">STRING</td><td>Target settlement currency</td></tr>
-        <tr class="highlight-row"><td><span class="badge-fk">FK</span>originator_party_id</td><td class="type">STRING</td><td>→ identity.party</td></tr>
-        <tr class="highlight-row"><td><span class="badge-fk">FK</span>beneficiary_party_id</td><td class="type">STRING</td><td>→ identity.party</td></tr>
-        <tr><td>originator_block_key</td><td class="type">STRING</td><td>routing:ABA|proxy:hash|token:vault</td></tr>
-        <tr><td>match_rule</td><td class="type">STRING</td><td>EXACT_TOKEN | ROUTING_ACCT | PROXY_EXACT | NAME_ROUTING | NEW_PARTY</td></tr>
-        <tr><td>originator_swift_bic</td><td class="type">STRING</td><td>ISO 9362 BIC</td></tr>
-        <tr><td>beneficiary_swift_bic</td><td class="type">STRING</td><td>ISO 9362 BIC</td></tr>
-        <tr><td>is_on_us</td><td class="type">BOOL</td><td>Derived at ETL via ref_on_us_institutions</td></tr>
-        <tr><td>transaction_ts</td><td class="type">TIMESTAMP</td><td>PARTITION BY DATE(transaction_ts)</td></tr>
-        <tr><td>rail_json</td><td class="type">JSON</td><td>Rail-native extension fields</td></tr>
+        <tr><td colspan="3" style="background:#02081A;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;padding:8px 16px 6px">— IDENTITY &amp; TENANCY —</td></tr>
+        <tr class="highlight-row"><td><span class="badge-key">PK</span>transaction_id</td><td class="type">STRING NOT NULL</td><td>Vault-generated globally unique ID</td></tr>
+        <tr><td>tenant_id</td><td class="type">STRING NOT NULL</td><td>FI tenant identifier (row-level isolation) · CLUSTER BY</td></tr>
+        <tr><td>source_system</td><td class="type">STRING NOT NULL</td><td>ipay | eps | payrailz | cps | …</td></tr>
+        <tr><td>source_transaction_id</td><td class="type">STRING NOT NULL</td><td>Transaction ID in the source system</td></tr>
+        <tr><td>event_id</td><td class="type">STRING NOT NULL</td><td>Unique CDC / event identifier from ingestion pipeline</td></tr>
+        <tr><td colspan="3" style="background:#02081A;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;padding:8px 16px 6px">— CANONICAL CLASSIFICATION —</td></tr>
+        <tr><td>payment_type</td><td class="type">STRING NOT NULL</td><td>ACH | WIRE | CARD | ZELLE | RTP | FEDNOW | CHECK | RDC | BILLPAY · CLUSTER BY</td></tr>
+        <tr><td>payment_rail</td><td class="type">STRING NOT NULL</td><td>Underlying network / rail identifier</td></tr>
+        <tr><td>direction</td><td class="type">STRING NOT NULL</td><td>INBOUND | OUTBOUND</td></tr>
+        <tr><td>channel</td><td class="type">STRING</td><td>ONLINE | MOBILE | BRANCH | API | FILE | …</td></tr>
+        <tr><td colspan="3" style="background:#02081A;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;padding:8px 16px 6px">— AMOUNT / TIME / STATUS —</td></tr>
+        <tr><td>amount</td><td class="type">NUMERIC NOT NULL</td><td>Transaction amount in <code style="color:var(--mint);font-size:10px">currency_code</code> currency</td></tr>
+        <tr><td>currency_code</td><td class="type">STRING NOT NULL</td><td>ISO 4217 transaction currency (e.g. USD, EUR, GBP)</td></tr>
+        <tr><td>fee_amount</td><td class="type">NUMERIC</td><td>Associated fee amount (nullable)</td></tr>
+        <tr><td>transaction_ts</td><td class="type">TIMESTAMP NOT NULL</td><td>Business timestamp · PARTITION BY DATE(transaction_ts)</td></tr>
+        <tr><td>effective_date</td><td class="type">DATE</td><td>Effective / value date</td></tr>
+        <tr><td>settlement_date</td><td class="type">DATE</td><td>Settlement date</td></tr>
+        <tr><td>status</td><td class="type">STRING NOT NULL</td><td>Canonical lifecycle status · CLUSTER BY</td></tr>
+        <tr><td>status_reason_code</td><td class="type">STRING</td><td>Standardized reason / return / reject code</td></tr>
+        <tr><td colspan="3" style="background:#02081A;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;padding:8px 16px 6px">— PARTY REFERENCES (tokenized PII — MDM keys live in identity.*) —</td></tr>
+        <tr class="highlight-row"><td><span class="badge-fk">FK</span>originator_party_id</td><td class="type">STRING</td><td>→ identity.party · resolved by block-and-key IR service</td></tr>
+        <tr><td>originator_account_token</td><td class="type">STRING</td><td>Vault token for sender account (PCI)</td></tr>
+        <tr><td>originator_routing_number</td><td class="type">STRING</td><td>Sender ABA routing / transit number</td></tr>
+        <tr class="highlight-row"><td><span class="badge-fk">FK</span>beneficiary_party_id</td><td class="type">STRING</td><td>→ identity.party · resolved by block-and-key IR service</td></tr>
+        <tr><td>beneficiary_account_token</td><td class="type">STRING</td><td>Vault token for receiver account (PCI)</td></tr>
+        <tr><td>beneficiary_routing_number</td><td class="type">STRING</td><td>Receiver ABA routing / transit number</td></tr>
+        <tr><td colspan="3" style="background:#02081A;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;padding:8px 16px 6px">— RAIL JSON EXTENSION (see Rail JSON tab for per-rail schemas) —</td></tr>
+        <tr><td>rail_schema_version</td><td class="type">STRING NOT NULL</td><td>Version tag for rail_details_json contract (e.g. v2)</td></tr>
+        <tr><td>rail_details_json</td><td class="type">JSON NOT NULL</td><td>Rail-native fields validated against versioned JSON schema</td></tr>
+        <tr><td>dq_flags_json</td><td class="type">JSON</td><td>Data-quality flag array / object from pipeline</td></tr>
+        <tr><td colspan="3" style="background:#02081A;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;padding:8px 16px 6px">— SCHEMA &amp; AUDIT METADATA —</td></tr>
+        <tr><td>schema_version</td><td class="type">STRING NOT NULL</td><td>Unified schema contract version</td></tr>
+        <tr><td>event_ts</td><td class="type">TIMESTAMP NOT NULL</td><td>Source event timestamp</td></tr>
+        <tr><td>ingestion_ts</td><td class="type">TIMESTAMP NOT NULL</td><td>Landing / ingestion timestamp in warehouse</td></tr>
+        <tr><td colspan="3" style="background:#02081A;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;padding:8px 16px 6px">— CDC METADATA —</td></tr>
+        <tr><td>_cdc_sequence_id</td><td class="type">STRING NOT NULL</td><td>Monotonic source sequence for deterministic ordering</td></tr>
+        <tr><td>_cdc_operation</td><td class="type">STRING NOT NULL</td><td>I | U | D</td></tr>
+        <tr><td>_cdc_timestamp</td><td class="type">TIMESTAMP NOT NULL</td><td>Source change-capture timestamp</td></tr>
+        <tr><td>_cdc_source_system</td><td class="type">STRING NOT NULL</td><td>Source app / system for this CDC event</td></tr>
+        <tr><td>_cdc_load_timestamp</td><td class="type">TIMESTAMP NOT NULL</td><td>Load timestamp in raw / bronze layer</td></tr>
       </tbody>
     </table>
   </div>
 
+  <!-- ── IDENTITY v3 ────────────────────────────────────────
+       Source: schemas/identity/party_identity_v3.sql
+       Note: block_key and match_rule live here in
+       party_resolution_event — NOT on the fact table.
+       party_proxy removed in v3; proxy fields moved into
+       party_account (proxy_type / proxy_value_token).
+  ──────────────────────────────────────────────────────── -->
   <div class="schema-panel hidden" id="tab-identity">
     <table class="col-table">
-      <thead><tr><th>TABLE</th><th>PURPOSE</th><th>KEY COLUMNS</th></tr></thead>
+      <thead><tr><th>TABLE</th><th>PURPOSE</th><th>KEY COLUMNS (v3)</th></tr></thead>
       <tbody>
-        <tr><td>identity.party</td><td>Canonical party master</td><td>party_id, party_type, display_name, created_at</td></tr>
-        <tr><td>identity.party_account</td><td>Account-to-party link</td><td>account_token, routing_number, account_type</td></tr>
-        <tr><td>identity.party_address</td><td>IBAN / BIC / address</td><td>iban_token, swift_bic, correspondent_bank_bic</td></tr>
-        <tr><td>identity.party_proxy</td><td>Phone / email tokens</td><td>proxy_token, proxy_type (PHONE|EMAIL|ALIAS)</td></tr>
-        <tr><td>identity.party_relationship</td><td>UBO, joint, biller links</td><td>parent_party_id, child_party_id, relationship_type</td></tr>
-        <tr><td>identity.biller_registry</td><td>Biller master</td><td>biller_id, biller_name, category, routing_number</td></tr>
-        <tr><td>identity.ir_audit_log</td><td>Resolution history</td><td>transaction_id, rule_applied, confidence_score</td></tr>
+        <tr class="highlight-row"><td>identity.party</td><td>Canonical party master</td><td>party_id, party_type (INDIVIDUAL|BUSINESS|BILLER|GOVERNMENT|FINANCIAL_INSTITUTION), display_name, name_token, tax_id_token, resolution_status, resolution_confidence, tenant_id</td></tr>
+        <tr><td>identity.party_account</td><td>Payment instrument linked to a party</td><td>account_id → party_id, account_type, account_number_token, is_on_us, institution_routing_number, institution_swift_bic, institution_iban_token (v3), proxy_type, proxy_value_token</td></tr>
+        <tr><td>identity.party_account_rail_ref</td><td>Per-rail identifiers for each account</td><td>rail_ref_id → account_id, rail_type, rail_identifier_type (ROUTING_ACCOUNT|SWIFT_BIC|IBAN|CARD_TOKEN|ZELLE_ALIAS|RTP_PARTICIPANT_ID|FEDNOW_PARTICIPANT_ID), rail_identifier_token, rail_identifier_plain</td></tr>
+        <tr><td>identity.party_address</td><td>Address + IBAN / BIC / SWIFT fields (v3)</td><td>address_id → party_id, address_type, swift_bic, correspondent_bank_bic, iban_token, iban_country_code, bank_name, address_line1_token</td></tr>
+        <tr class="highlight-row"><td>identity.party_relationship</td><td>Typed relationships between parties <span style="color:var(--mint);font-size:10px">▸ NEW v3</span></td><td>party_id_a, party_id_b, relationship_type (JOINT_ACCOUNT|AUTHORIZED_SIGNER|PARENT_SUBSIDIARY|BENEFICIAL_OWNER|TRUST_BENEFICIARY|GUARANTOR|CORRESPONDENT_BANK), role_a, role_b, ownership_percentage</td></tr>
+        <tr class="highlight-row"><td>identity.biller_registry</td><td>BillPay billers as first-class party records <span style="color:var(--mint);font-size:10px">▸ NEW v3</span></td><td>biller_registry_id → party_id, biller_id, standard_biller_id, biller_category, aggregator_name (IPAY|PAYRAILZ|BPS), payment_methods ARRAY&lt;STRING&gt;, biller_fi_routing</td></tr>
+        <tr><td>identity.party_resolution_event</td><td>Block-and-key audit log (replaces ir_audit_log)</td><td>resolution_event_id, source_party_id, target_party_id, <strong style="color:var(--amber)">block_key</strong>, <strong style="color:var(--amber)">match_rule</strong>, resolution_method (EXACT_TOKEN|ROUTING_ACCOUNT|PROXY_EXACT|NAME_ROUTING|MANUAL|NEW_PARTY), confidence_score, match_attributes JSONB</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── RAIL JSON ──────────────────────────────────────────
+       Source: schemas/rail_json_schemas/v2/*.schema.json
+       All fields live inside unified_transactions.rail_details_json.
+       Note: FX (fx_rate, original_currency) is a WIRE rail_details
+       field — it is not a first-class column on the fact table.
+       is_on_us lives here per-rail, not as a top-level column.
+  ──────────────────────────────────────────────────────── -->
+  <div class="schema-panel hidden" id="tab-railjson">
+    <table class="col-table">
+      <thead><tr><th>RAIL</th><th>REQUIRED FIELDS</th><th>KEY EXTENSION FIELDS IN rail_details_json</th></tr></thead>
+      <tbody>
+        <tr><td>ACH</td><td>entry_class_code (PPD|CCD|WEB|TEL|CTX|IAT|…), transaction_type, trace_number</td><td>batch_number, company_id, same_day_flag, addenda_records[ ], return_details{ return_reason_code R01–R99, return_date }, noc_details{ }, iat_details{ foreign_exchange_indicator }, is_on_us</td></tr>
+        <tr class="highlight-row"><td>WIRE</td><td>wire_subtype (FEDWIRE_DOMESTIC|SWIFT_INTERNATIONAL|CHIPS), imad</td><td>omad, swift_uetr, chips_sequence_number, originator_fi_swift_bic, beneficiary_fi_swift_bic, <strong style="color:var(--amber)">foreign_exchange{ exchange_rate, original_currency_code, original_amount }</strong>, regulatory_reporting[ ], purpose_code, is_on_us</td></tr>
+        <tr><td>CARD</td><td>card_type (DEBIT|CREDIT|PREPAID|FSA|HSA), card_brand, transaction_subtype (AUTHORIZATION|CAPTURE|REFUND|CHARGEBACK|…)</td><td>authorization_code, merchant_category_code (MCC), card_entry_mode, card_present, cvv_result, avs_result, chargeback_details{ reason_code, dispute_status }, network_transaction_id, is_on_us</td></tr>
+        <tr><td>ZELLE</td><td>zelle_reference_id, transaction_subtype (SEND_MONEY|REQUEST_MONEY|REQUEST_FULFILLMENT|…)</td><td>originator_proxy_type (EMAIL|PHONE|ZELLE_ALIAS), originator_proxy_token, beneficiary_proxy_type, beneficiary_proxy_token, enrollment_status, request_for_payment_id, payment_expiry_date, is_on_us</td></tr>
+        <tr><td>RTP</td><td>rtp_transaction_id, transaction_subtype (CREDIT_TRANSFER|REQUEST_FOR_PAYMENT|PAYMENT_RETURN|…)</td><td>end_to_end_id, uetr, instructing_agent_routing, remittance_information, structured_remittance{ creditor_reference }, purpose_code, rtp_network_status, return_details{ ISO 20022 AC04/AG01 }, request_for_payment{ rfp_id, rfp_status }, is_on_us</td></tr>
+        <tr><td>FEDNOW</td><td>fednow_transaction_id, transaction_subtype (CREDIT_TRANSFER|REQUEST_FOR_PAYMENT|RETURN|LIQUIDITY_MANAGEMENT_TRANSFER)</td><td>end_to_end_id, uetr, instructing_agent_routing, remittance_information, purpose_code, fednow_status (RCVD|ACCP|ACWC|RJCT|ACSC), ultimate_debtor_account_token, return_details{ }, request_for_payment{ }, is_on_us</td></tr>
+        <tr><td>CHECK / RDC</td><td>check_subtype (PAPER_CHECK|RDC_MOBILE|RDC_SCANNER|TELLER_CAPTURE)</td><td>check_number, micr_routing_number, micr_account_token, micr_verification_status, check_date, payee_name_token, rdc_details{ front/back image IDs, iqv_result }, clearing_details{ clearing_house FRB|SVPCO, truncation_status }, return_details{ NSF / STOP_PAYMENT }, is_on_us</td></tr>
+        <tr><td>BILLPAY</td><td>bill_pay_reference, biller_id, delivery_method (ELECTRONIC_ACH|ELECTRONIC_REAL_TIME|PAPER_CHECK|LASER_DRAFT)</td><td>biller_name, biller_category, biller_account_number_token, underlying_rail (ACH|RTP|FEDNOW|CHECK), underlying_transaction_id, funding_account_token, scheduled_delivery_date, recurring_details{ frequency, occurrence_number }, aggregator_name (IPAY|PAYRAILZ|BPS|CHECKFREE), is_on_us</td></tr>
       </tbody>
     </table>
   </div>
