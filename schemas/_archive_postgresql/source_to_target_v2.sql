@@ -1,6 +1,6 @@
 -- =============================================================================
 -- JHBI Unified Payments Platform
--- Source-to-Target Mapping  (PostgreSQL 14+)
+-- Source-to-Target Mapping  v2.0.0  (PostgreSQL 14+)
 -- =============================================================================
 -- This table is the authoritative mapping between:
 --   source system fields  →  unified_transactions columns
@@ -13,7 +13,7 @@
 
 CREATE SCHEMA IF NOT EXISTS metadata;
 
-CREATE TABLE IF NOT EXISTS metadata.source_to_target (
+CREATE TABLE IF NOT EXISTS metadata.source_to_target_v2 (
   mapping_id            SERIAL PRIMARY KEY,
 
   -- Source context
@@ -71,13 +71,13 @@ CREATE TABLE IF NOT EXISTS metadata.source_to_target (
   created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_by            TEXT NOT NULL DEFAULT 'system',
-  schema_version        TEXT NOT NULL DEFAULT '1.0'
+  schema_version        TEXT NOT NULL DEFAULT 'v2'
 );
 
 -- =============================================================================
 -- SEED DATA — ACH (iPay source)
 -- =============================================================================
-INSERT INTO metadata.source_to_target
+INSERT INTO metadata.source_to_target_v2
   (source_system, payment_type, source_table, source_field, source_data_type, source_description,
    target_schema, target_table, target_field, target_data_type,
    transformation_type, transformation_notes, sensitivity_class, ir_role, ir_priority,
@@ -177,7 +177,7 @@ VALUES
 -- =============================================================================
 -- SEED DATA — WIRE (EPS source)
 -- =============================================================================
-INSERT INTO metadata.source_to_target
+INSERT INTO metadata.source_to_target_v2
   (source_system, payment_type, source_table, source_field, source_data_type, source_description,
    target_schema, target_table, target_field, target_data_type,
    transformation_type, transformation_notes, sensitivity_class, ir_role, ir_priority,
@@ -218,7 +218,7 @@ VALUES
 -- =============================================================================
 -- SEED DATA — ZELLE (iPay / Payrailz source)
 -- =============================================================================
-INSERT INTO metadata.source_to_target
+INSERT INTO metadata.source_to_target_v2
   (source_system, payment_type, source_table, source_field, source_data_type, source_description,
    target_schema, target_table, target_field, target_data_type,
    transformation_type, transformation_notes, sensitivity_class, ir_role, ir_priority,
@@ -257,7 +257,7 @@ VALUES
 -- =============================================================================
 -- SEED DATA — RTP / FedNow (shared gateway pattern)
 -- =============================================================================
-INSERT INTO metadata.source_to_target
+INSERT INTO metadata.source_to_target_v2
   (source_system, payment_type, source_table, source_field, source_data_type, source_description,
    target_schema, target_table, target_field, target_data_type,
    transformation_type, transformation_notes, sensitivity_class, ir_role, ir_priority,
@@ -295,16 +295,16 @@ VALUES
 -- INDEX ON MAPPING TABLE
 -- =============================================================================
 CREATE INDEX IF NOT EXISTS idx_stm_source_payment
-  ON metadata.source_to_target (source_system, payment_type);
+  ON metadata.source_to_target_v2 (source_system, payment_type);
 
 CREATE INDEX IF NOT EXISTS idx_stm_ir_role
-  ON metadata.source_to_target (ir_role, ir_priority)
+  ON metadata.source_to_target_v2 (ir_role, ir_priority)
   WHERE ir_role IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_stm_on_us
-  ON metadata.source_to_target (payment_type, is_on_us_indicator)
+  ON metadata.source_to_target_v2 (payment_type, is_on_us_indicator)
   WHERE is_on_us_indicator = TRUE;
 
-COMMENT ON TABLE metadata.source_to_target IS
+COMMENT ON TABLE metadata.source_to_target_v2 IS
   'Authoritative source-to-target field mapping for all payment rails. '
   'Includes PCI/PII handling, identity resolution role, and on-us detection logic.';

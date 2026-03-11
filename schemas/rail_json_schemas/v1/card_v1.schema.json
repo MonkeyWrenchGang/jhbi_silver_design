@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jhbi/schemas/rail/v1/card_v1.schema.json",
+  "title": "Card Rail Details v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rail_schema_version",
+    "rail_type",
+    "fields"
+  ],
+  "properties": {
+    "rail_schema_version": {
+      "const": "v1"
+    },
+    "rail_type": {
+      "const": "CARD"
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "card_brand",
+        "transaction_type",
+        "merchant_category_code"
+      ],
+      "properties": {
+        "card_type": {
+          "type": ["string", "null"],
+          "enum": ["DEBIT", "CREDIT", "PREPAID", null]
+        },
+        "card_brand": {
+          "type": "string",
+          "enum": ["VISA", "MASTERCARD", "AMEX", "DISCOVER", "OTHER"]
+        },
+        "card_entry_mode": {
+          "type": ["string", "null"],
+          "enum": ["CHIP", "SWIPE", "CONTACTLESS", "MANUAL", "ECOM", null]
+        },
+        "merchant_category_code": {
+          "type": "string",
+          "pattern": "^[0-9]{4}$"
+        },
+        "merchant_id": {
+          "type": ["string", "null"],
+          "maxLength": 64
+        },
+        "merchant_name": {
+          "type": ["string", "null"],
+          "maxLength": 255
+        },
+        "authorization_code": {
+          "type": ["string", "null"],
+          "maxLength": 16
+        },
+        "transaction_type": {
+          "type": "string",
+          "enum": ["AUTHORIZATION", "CAPTURE", "SETTLEMENT", "REFUND", "VOID", "CHARGEBACK"]
+        },
+        "card_present": {
+          "type": ["boolean", "null"]
+        },
+        "cvv_present": {
+          "type": ["boolean", "null"]
+        },
+        "network_reference_id": {
+          "type": ["string", "null"],
+          "maxLength": 64
+        },
+        "terminal_id": {
+          "type": ["string", "null"],
+          "maxLength": 32
+        }
+      }
+    }
+  }
+}
+

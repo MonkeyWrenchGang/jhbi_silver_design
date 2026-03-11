@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jhbi/schemas/rail/v1/ach_v1.schema.json",
+  "title": "ACH Rail Details v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rail_schema_version",
+    "rail_type",
+    "fields"
+  ],
+  "properties": {
+    "rail_schema_version": {
+      "const": "v1"
+    },
+    "rail_type": {
+      "const": "ACH"
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trace_number",
+        "entry_class_code",
+        "transaction_type"
+      ],
+      "properties": {
+        "trace_number": {
+          "type": "string",
+          "pattern": "^[0-9]{15}$",
+          "description": "NACHA trace number"
+        },
+        "batch_number": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "file_id": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "transaction_code": {
+          "type": "string",
+          "maxLength": 8
+        },
+        "entry_class_code": {
+          "type": "string",
+          "enum": ["PPD", "CCD", "WEB", "TEL", "CTX", "IAT"]
+        },
+        "transaction_type": {
+          "type": "string",
+          "enum": ["CR", "DR", "Credit", "Debit"]
+        },
+        "same_day_flag": {
+          "type": "boolean"
+        },
+        "company_entry_description": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "addenda_record_indicator": {
+          "type": "boolean"
+        },
+        "addenda_information": {
+          "type": ["string", "null"],
+          "maxLength": 2048
+        },
+        "return_reason_code": {
+          "type": ["string", "null"],
+          "pattern": "^R[0-9]{2}$"
+        },
+        "return_date": {
+          "type": ["string", "null"],
+          "format": "date"
+        },
+        "noc_code": {
+          "type": ["string", "null"],
+          "pattern": "^C[0-9]{2}$"
+        }
+      }
+    }
+  }
+}
+

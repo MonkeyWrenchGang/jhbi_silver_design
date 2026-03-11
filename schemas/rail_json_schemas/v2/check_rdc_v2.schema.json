@@ -13,7 +13,11 @@
   ],
   "properties": {
     "rail_schema_version": { "const": "v2" },
-    "rail_type": { "const": "CHECK_RDC" },
+    "rail_type": {
+      "type": "string",
+      "enum": ["CHECK", "RDC"],
+      "description": "CHECK for paper checks, RDC for remote deposit capture. Aligns with payment_type enum on unified_transactions."
+    },
 
     "check_subtype": {
       "type": "string",

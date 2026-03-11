@@ -1,12 +1,23 @@
 -- =============================================================================
 -- JHBI Unified Payments Platform
--- Party Identity Schema (PostgreSQL 14+)
+-- Party Identity Schema  v3.0.0  (PostgreSQL 14+)
+-- Date: 2026-03-10
+-- Supersedes: party_identity.sql (v2.0.0)
+-- =============================================================================
+-- What's new in v3:
+--   + IBAN / BIC address model for international wires
+--     (party_address: iban_token, iban_country_code; party_account: institution_iban_token)
+--   + party_relationship table (joint accounts, signers, parent-subsidiary, etc.)
+--   + identity.biller_registry (billers as first-class party records)
+--   + Block-and-key identity resolution replaces ML ensemble scoring
+--     (party_resolution_event: block_key, match_rule columns;
+--      resolution_method enum updated — ML_MODEL removed)
 -- =============================================================================
 
 CREATE SCHEMA IF NOT EXISTS identity;
 
 -- ---------------------------------------------------------------------------
--- 1. PARTY  — root canonical entity
+-- 1. PARTY  — root canonical entity (no changes from v2 except schema_version)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS identity.party (
   party_id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -33,7 +44,7 @@ CREATE TABLE IF NOT EXISTS identity.party (
   created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_by            TEXT NOT NULL DEFAULT 'system',
-  schema_version        TEXT NOT NULL DEFAULT '1.0',
+  schema_version        TEXT NOT NULL DEFAULT 'v3',
 
   CONSTRAINT chk_party_type
     CHECK (party_type IN ('INDIVIDUAL','BUSINESS','BILLER','GOVERNMENT','FINANCIAL_INSTITUTION')),
@@ -45,6 +56,7 @@ CREATE TABLE IF NOT EXISTS identity.party (
 
 -- ---------------------------------------------------------------------------
 -- 2. PARTY ACCOUNT  — payment instrument attached to a party
+--    v3 adds: institution_iban_token for international accounts
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS identity.party_account (
   account_id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -64,7 +76,7 @@ CREATE TABLE IF NOT EXISTS identity.party_account (
   institution_name            TEXT,            -- Human-readable FI name
   institution_country_code    CHAR(2) DEFAULT 'US',
 
-  -- Holding FI — international
+  -- Holding FI — international  *** NEW v3 ***
   institution_swift_bic   TEXT,                -- SWIFT BIC (e.g. CHASUS33)
   institution_iban_token  TEXT,                -- Vault token → IBAN of receiving account
   --   Stored as token because IBANs can contain account number info (PCI/PII)
@@ -91,7 +103,7 @@ CREATE TABLE IF NOT EXISTS identity.party_account (
   created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_by              TEXT NOT NULL DEFAULT 'system',
-  schema_version          TEXT NOT NULL DEFAULT '1.0',
+  schema_version          TEXT NOT NULL DEFAULT 'v3',
 
   CONSTRAINT chk_account_type
     CHECK (account_type IN ('CHECKING','SAVINGS','MONEY_MARKET','LOAN','CARD',
@@ -103,7 +115,7 @@ CREATE TABLE IF NOT EXISTS identity.party_account (
 );
 
 -- ---------------------------------------------------------------------------
--- 3. PARTY ACCOUNT RAIL REFERENCE  — per-rail identifiers 
+-- 3. PARTY ACCOUNT RAIL REFERENCE  — per-rail identifiers (unchanged from v2)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS identity.party_account_rail_ref (
   rail_ref_id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -126,7 +138,7 @@ CREATE TABLE IF NOT EXISTS identity.party_account_rail_ref (
   tenant_id               TEXT NOT NULL,
   created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
-  schema_version          TEXT NOT NULL DEFAULT '1.0',
+  schema_version          TEXT NOT NULL DEFAULT 'v3',
 
   CONSTRAINT chk_rail_type
     CHECK (rail_type IN ('ACH','WIRE','CARD','ZELLE','RTP','FEDNOW','CHECK','RDC','BILLPAY')),
@@ -135,7 +147,7 @@ CREATE TABLE IF NOT EXISTS identity.party_account_rail_ref (
 );
 
 -- ---------------------------------------------------------------------------
--- 4. PARTY ADDRESS 
+-- 4. PARTY ADDRESS  — v3 adds IBAN/international address fields
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS identity.party_address (
   address_id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -154,7 +166,7 @@ CREATE TABLE IF NOT EXISTS identity.party_address (
   address_line1_token     TEXT,
   address_line2_token     TEXT,
 
-  -- International / wire address
+  -- International / wire address  *** NEW v3 ***
   -- For international wires (SWIFT/IBAN), additional structured fields are needed
   -- per SWIFT MT103 / ISO 20022 pacs.008 addressing requirements
   swift_bic               TEXT,                -- Receiving bank BIC (non-sensitive; 8 or 11 chars)
@@ -171,14 +183,14 @@ CREATE TABLE IF NOT EXISTS identity.party_address (
   tenant_id               TEXT NOT NULL,
   created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
-  schema_version          TEXT NOT NULL DEFAULT '1.0',
+  schema_version          TEXT NOT NULL DEFAULT 'v3',
 
   CONSTRAINT chk_address_type
     CHECK (address_type IN ('MAILING','LEGAL','REGISTERED','BILLING','PHYSICAL','CORRESPONDENT'))
 );
 
 -- ---------------------------------------------------------------------------
--- 5. PARTY RELATIONSHIP
+-- 5. PARTY RELATIONSHIP  *** NEW v3 ***
 --    Links two party records with a typed relationship.
 --    Use cases:
 --      - JOINT_ACCOUNT: two individuals share an account
@@ -224,7 +236,7 @@ CREATE TABLE IF NOT EXISTS identity.party_relationship (
   created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_by              TEXT NOT NULL DEFAULT 'system',
-  schema_version          TEXT NOT NULL DEFAULT '1.0',
+  schema_version          TEXT NOT NULL DEFAULT 'v3',
 
   CONSTRAINT chk_relationship_type
     CHECK (relationship_type IN (
@@ -239,7 +251,7 @@ CREATE TABLE IF NOT EXISTS identity.party_relationship (
 );
 
 -- ---------------------------------------------------------------------------
--- 6. BILLER REGISTRY
+-- 6. BILLER REGISTRY  *** NEW v3 ***
 --    Links a BillPay biller to its canonical identity.party record.
 --    Enables cross-FI biller analytics and standardized biller identification.
 -- ---------------------------------------------------------------------------
@@ -293,7 +305,7 @@ CREATE TABLE IF NOT EXISTS identity.biller_registry (
   created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_by              TEXT NOT NULL DEFAULT 'system',
-  schema_version          TEXT NOT NULL DEFAULT '1.0',
+  schema_version          TEXT NOT NULL DEFAULT 'v3',
 
   CONSTRAINT chk_biller_category
     CHECK (biller_category IN (
@@ -305,7 +317,7 @@ CREATE TABLE IF NOT EXISTS identity.biller_registry (
 );
 
 -- ---------------------------------------------------------------------------
--- 7. PARTY RESOLUTION EVENT 
+-- 7. PARTY RESOLUTION EVENT  — v3: block-and-key replaces ML scoring
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS identity.party_resolution_event (
   resolution_event_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -316,7 +328,7 @@ CREATE TABLE IF NOT EXISTS identity.party_resolution_event (
   -- MATCH_CANDIDATE | MATCH_CONFIRMED | MERGE | SPLIT | ALIAS_CREATED | SUPERSEDED | NEW_PARTY
 
   -- -----------------------------------------------------------------------
-  -- BLOCK-AND-KEY RESOLUTION
+  -- BLOCK-AND-KEY RESOLUTION  *** v3: replaces ML_MODEL ***
   --
   -- Block key:  a fast-lookup field used to narrow the candidate set
   --             (e.g. routing_number, account_token_prefix, proxy_hash)
@@ -466,26 +478,26 @@ COMMENT ON TABLE identity.party IS
 
 COMMENT ON TABLE identity.party_account IS
   'Payment instrument for a party. is_on_us=TRUE = account at this FI tenant. '
-  'institution_iban_token and institution_swift_bic for international '
+  'v3 adds institution_iban_token and institution_swift_bic for international '
   'wire accounts.';
 
 COMMENT ON TABLE identity.party_address IS
-  'Structured address. IBAN/BIC fields (swift_bic, correspondent_bank_bic, '
+  'Structured address. v3 adds IBAN/BIC fields (swift_bic, correspondent_bank_bic, '
   'iban_token, iban_country_code, bank_name) to support SWIFT MT103 / ISO 20022 '
   'pacs.008 international wire address requirements.';
 
 COMMENT ON TABLE identity.party_relationship IS
-  'Typed relationship between two party records. Supports joint accounts, '
+  'v3 NEW. Typed relationship between two party records. Supports joint accounts, '
   'authorized signers, corporate hierarchies, beneficial ownership, and trust '
   'structures. Direction is A→B where role_a and role_b describe each side.';
 
 COMMENT ON TABLE identity.biller_registry IS
-  'Links BillPay biller IDs to canonical identity.party records. '
+  'v3 NEW. Links BillPay biller IDs to canonical identity.party records. '
   'Enables cross-FI biller analytics and standardized biller identification '
   'across iPay, Payrailz, and BPS aggregators.';
 
 COMMENT ON TABLE identity.party_resolution_event IS
-  'Audit log of all identity resolution decisions. Replaces ML ensemble '
+  'Audit log of all identity resolution decisions. v3 replaces ML ensemble '
   'scoring with deterministic block-and-key resolution. New columns: block_key '
   '(narrowing key), match_rule (rule that fired within block), match_attributes '
   '(JSONB snapshot of compared fields).';

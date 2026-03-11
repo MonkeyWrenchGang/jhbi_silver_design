@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jhbi/schemas/rail/v1/wire_v1.schema.json",
+  "title": "Wire Rail Details v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rail_schema_version",
+    "rail_type",
+    "fields"
+  ],
+  "properties": {
+    "rail_schema_version": {
+      "const": "v1"
+    },
+    "rail_type": {
+      "const": "WIRE"
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wire_reference_number",
+        "wire_type"
+      ],
+      "properties": {
+        "wire_reference_number": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "wire_type": {
+          "type": "string",
+          "enum": ["DOMESTIC", "INTERNATIONAL"]
+        },
+        "sender_reference": {
+          "type": ["string", "null"],
+          "maxLength": 64
+        },
+        "beneficiary_reference": {
+          "type": ["string", "null"],
+          "maxLength": 64
+        },
+        "beneficiary_bank_name": {
+          "type": ["string", "null"],
+          "maxLength": 255
+        },
+        "beneficiary_bank_routing_number": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9]{9}$"
+        },
+        "beneficiary_country": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}$"
+        },
+        "intermediary_bank_name": {
+          "type": ["string", "null"],
+          "maxLength": 255
+        },
+        "intermediary_bank_routing_number": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9]{9}$"
+        },
+        "payment_instruction": {
+          "type": ["string", "null"],
+          "maxLength": 2048
+        },
+        "charges": {
+          "type": ["string", "null"],
+          "enum": ["OUR", "SHA", "BEN", null]
+        },
+        "swift_bic": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z0-9]{8}([A-Z0-9]{3})?$"
+        }
+      }
+    }
+  }
+}
+
