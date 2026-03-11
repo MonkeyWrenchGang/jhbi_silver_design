@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>JHBI Unified Payments Platform</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy:   #0A2342;
+  --blue:   #065A82;
+  --teal:   #1C7293;
+  --mint:   #02C39A;
+  --amber:  #F59E0B;
+  --purple: #7C3AED;
+  --red:    #DC2626;
+  --light:  #F0F4F8;
+  --muted:  #7AAFC8;
+  --dk:     #A8C4D8;
+  --card:   #06192D;
+  --border: #1A3558;
+}
+body {
+  font-family: "Segoe UI", Calibri, system-ui, sans-serif;
+  background: var(--navy);
+  color: #fff;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+
+/* ── NAV ────────────────────────────────────────────────── */
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 40px;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(10,35,66,0.95);
+  backdrop-filter: blur(8px);
+}
+.nav-logo { font-size: 14px; font-weight: 700; letter-spacing: 0.06em; color: #fff; }
+.nav-logo span { color: var(--mint); }
+.nav-links { display: flex; gap: 24px; }
+.nav-links a { font-size: 12px; color: var(--muted); font-weight: 600; transition: color 0.15s; }
+.nav-links a:hover { color: #fff; }
+.nav-gh {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--blue); border: 1px solid #1A4A72;
+  border-radius: 20px; padding: 5px 14px;
+  font-size: 12px; font-weight: 600; color: #fff;
+  transition: background 0.15s;
+}
+.nav-gh:hover { background: var(--teal); }
+
+/* ── HERO ───────────────────────────────────────────────── */
+.hero {
+  padding: 80px 40px 64px;
+  max-width: 1100px;
+  margin: 0 auto;
+  position: relative;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--teal); border-radius: 20px;
+  padding: 4px 14px; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em; color: var(--mint);
+  margin-bottom: 20px;
+}
+.hero h1 {
+  font-size: clamp(32px, 5vw, 54px);
+  font-weight: 800; line-height: 1.08;
+  max-width: 680px;
+}
+.hero h1 em { color: var(--mint); font-style: normal; }
+.hero .sub {
+  max-width: 560px; margin-top: 16px;
+  color: var(--muted); font-size: 16px; line-height: 1.65;
+}
+.hero-stats {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  margin-top: 36px;
+}
+.stat-pill {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 20px;
+  display: flex; align-items: baseline; gap: 8px;
+}
+.stat-pill .sp-num {
+  font-size: 28px; font-weight: 800; line-height: 1;
+}
+.stat-pill .sp-lbl {
+  font-size: 12px; color: var(--muted); font-weight: 600;
+}
+.hero-ctas { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
+.btn-primary {
+  background: var(--mint); color: var(--navy);
+  font-weight: 700; font-size: 13px;
+  border-radius: 8px; padding: 10px 22px;
+  border: none; cursor: pointer;
+  transition: opacity 0.15s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary:hover { opacity: 0.88; }
+.btn-ghost {
+  background: transparent; color: #fff;
+  font-weight: 600; font-size: 13px;
+  border-radius: 8px; padding: 10px 22px;
+  border: 1px solid var(--border); cursor: pointer;
+  transition: border-color 0.15s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-ghost:hover { border-color: var(--teal); }
+
+/* ── SECTION SHARED ─────────────────────────────────────── */
+.section {
+  max-width: 1100px; margin: 0 auto;
+  padding: 0 40px 72px;
+}
+.sec-eyebrow {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+  color: var(--mint); margin-bottom: 6px;
+}
+.sec-title {
+  font-size: clamp(18px, 2.5vw, 26px); font-weight: 700;
+  color: #fff; margin-bottom: 6px;
+}
+.sec-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+hr.rule { border: none; border-top: 1px solid var(--border); margin: 0 40px 64px; }
+
+/* ── DESIGN PRINCIPLES STRIP ────────────────────────────── */
+.principles {
+  display: flex; gap: 0; overflow-x: auto;
+  padding-bottom: 4px; margin-bottom: 0;
+  scrollbar-width: none;
+}
+.principles::-webkit-scrollbar { display: none; }
+.principle {
+  flex: 1 1 0; min-width: 148px;
+  border-right: 1px solid var(--border);
+  padding: 20px 18px;
+  transition: background 0.15s;
+}
+.principle:last-child { border-right: none; }
+.principle:hover { background: #0B1F36; }
+.principle .pr-num {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+.principle .pr-name { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.principle .pr-body { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.principles-wrap {
+  border: 1px solid var(--border); border-radius: 12px;
+  overflow: hidden; margin-bottom: 0;
+}
+
+/* ── CARDS GRID ─────────────────────────────────────────── */
+.cards { display: grid; gap: 14px; }
+.cards-3 { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.cards-2 { grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); }
+.cards-4 { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 20px 22px;
+  transition: border-color 0.2s, transform 0.2s;
+  display: flex; flex-direction: column;
+}
+.card:hover { border-color: var(--teal); transform: translateY(-2px); }
+.card.link-card { cursor: pointer; }
+.card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.card-icon {
+  width: 36px; height: 36px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.card-title { font-size: 14px; font-weight: 700; color: #fff; }
+.card-type { font-size: 10px; color: var(--muted); font-weight: 600; letter-spacing: 0.08em; margin-top: 1px; }
+.card-body { font-size: 12px; color: var(--dk); line-height: 1.55; flex: 1; }
+.card-footer { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tag {
+  background: #0D2A44; border: 1px solid #1A3558;
+  color: var(--muted); font-size: 10px; font-weight: 600;
+  padding: 2px 8px; border-radius: 12px;
+  font-family: "Consolas", monospace;
+}
+.tag.mint { background: #002E21; border-color: #015040; color: var(--mint); }
+.tag.amber { background: #2E1E00; border-color: #5A3A00; color: var(--amber); }
+.card-link {
+  margin-left: auto; font-size: 11px; font-weight: 700;
+  color: var(--mint); display: flex; align-items: center; gap: 4px;
+}
+.card-link:hover { opacity: 0.75; }
+
+/* ── SCHEMA TABLE ───────────────────────────────────────── */
+.schema-tabs { display: flex; gap: 4px; margin-bottom: 0; }
+.stab {
+  background: transparent; border: 1px solid var(--border);
+  border-bottom: none; color: var(--muted); font-size: 12px;
+  font-weight: 600; padding: 7px 16px; border-radius: 6px 6px 0 0;
+  cursor: pointer; transition: all 0.15s;
+}
+.stab.active { background: var(--card); color: #fff; border-color: var(--teal); }
+.schema-panel {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 0 8px 8px 8px; overflow: hidden;
+}
+.schema-panel.hidden { display: none; }
+.col-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.col-table th {
+  text-align: left; color: var(--muted);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  background: #04111E;
+}
+.col-table td { padding: 8px 16px; border-bottom: 1px solid #0D1E2E; color: var(--dk); }
+.col-table tr:last-child td { border-bottom: none; }
+.col-table td:first-child { color: #fff; font-family: "Consolas", monospace; font-size: 11px; font-weight: 600; }
+.col-table td.type { color: var(--muted); font-family: "Consolas", monospace; font-size: 10px; }
+.highlight-row td { background: #06192D; }
+.badge-key { display: inline-block; background: #001E14; color: var(--mint); font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-right: 4px; }
+.badge-fk  { display: inline-block; background: #1A1200; color: var(--amber); font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-right: 4px; }
+
+/* ── ARCHITECTURE DIAGRAM ───────────────────────────────── */
+.arch {
+  display: grid;
+  grid-template-columns: 1fr 40px 1.3fr 40px 1fr;
+  gap: 0; align-items: stretch; margin-bottom: 0;
+}
+.arch-col { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.arch-col.hero-col { border-color: var(--mint); border-width: 2px; }
+.arch-hdr { padding: 10px 16px; font-size: 9px; font-weight: 700; letter-spacing: 0.12em; color: var(--navy); display: flex; align-items: center; gap: 8px; }
+.arch-items { padding: 12px 16px; }
+.arch-items li { font-size: 12px; color: var(--dk); padding: 4px 0; display: flex; align-items: flex-start; gap: 6px; }
+.arch-items li::before { content: "›"; color: var(--mint); font-weight: 700; flex-shrink: 0; }
+.arch-arrow {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; color: var(--mint); font-weight: 700;
+}
+.arch-mono {
+  font-family: "Consolas", monospace; font-size: 12px;
+  font-weight: 700; color: var(--mint);
+  padding: 8px 16px 4px;
+}
+
+/* ── FOOTER ─────────────────────────────────────────────── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 32px 40px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 16px;
+  color: #2A4A68; font-size: 12px;
+}
+footer .f-left { display: flex; flex-direction: column; gap: 4px; }
+footer .f-logo { font-size: 14px; font-weight: 700; color: var(--muted); }
+footer .f-logo span { color: var(--mint); }
+footer a { color: var(--teal); }
+.f-links { display: flex; gap: 20px; flex-wrap: wrap; }
+.f-links a { color: var(--muted); font-size: 12px; transition: color 0.15s; }
+.f-links a:hover { color: #fff; }
+</style>
+</head>
+<body>
+
+<!-- ── NAV ──────────────────────────────────────────────── -->
+<nav>
+  <div class="nav-logo">JHBI <span>Payments</span></div>
+  <div class="nav-links">
+    <a href="#architecture">Architecture</a>
+    <a href="#schemas">Schemas</a>
+    <a href="#analytics">Analytics</a>
+    <a href="#deliverables">Deliverables</a>
+    <a href="#principles">Principles</a>
+  </div>
+  <a class="nav-gh" href="https://github.com/MonkeyWrenchGang/jhbi_silver_design" target="_blank">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+    GitHub
+  </a>
+</nav>
+
+<!-- ── HERO ─────────────────────────────────────────────── -->
+<div class="hero">
+  <div class="hero-badge">⬡ JHBI UNIFIED PAYMENTS PLATFORM</div>
+  <h1>One schema.<br/><em>Every rail.</em></h1>
+  <p class="sub">
+    A BigQuery-native medallion architecture that unifies ACH, Wire, Card, Zelle, RTP,
+    FedNow, Check, and BillPay into a single identity-first, ML-ready data model.
+  </p>
+  <div class="hero-stats">
+    <div class="stat-pill"><span class="sp-num" style="color:var(--mint)">8</span><span class="sp-lbl">Payment Rails</span></div>
+    <div class="stat-pill"><span class="sp-num" style="color:var(--teal)">1</span><span class="sp-lbl">Unified Table</span></div>
+    <div class="stat-pill"><span class="sp-num" style="color:var(--amber)">7</span><span class="sp-lbl">FX Columns</span></div>
+    <div class="stat-pill"><span class="sp-num" style="color:var(--purple)">5</span><span class="sp-lbl">IR Rules</span></div>
+    <div class="stat-pill"><span class="sp-num" style="color:var(--mint)">3</span><span class="sp-lbl">Schema Layers</span></div>
+  </div>
+  <div class="hero-ctas">
+    <a class="btn-primary" href="deliverables/JHBI_Unified_Payments_Platform.pptx">⬇ Download Deck</a>
+    <a class="btn-ghost" href="docs/SCHEMA_DOCUMENTATION.md">📄 Schema Docs</a>
+    <a class="btn-ghost" href="https://github.com/MonkeyWrenchGang/jhbi_silver_design" target="_blank">⭐ Star on GitHub</a>
+  </div>
+</div>
+
+<!-- ── ARCHITECTURE ──────────────────────────────────────── -->
+<hr class="rule"/>
+<div class="section" id="architecture">
+  <div class="sec-eyebrow">MEDALLION ARCHITECTURE</div>
+  <div class="sec-title">Raw → Silver → Gold</div>
+  <div class="sec-sub">Source fidelity preserved in raw. Analytics built on silver. Aggregates served from gold.</div>
+  <div class="arch">
+    <div class="arch-col">
+      <div class="arch-hdr" style="background:var(--blue)">📥 SOURCE SYSTEMS</div>
+      <ul class="arch-items">
+        <li>iPay — ACH, BillPay</li>
+        <li>EPS — Wire</li>
+        <li>Visa / MC — Card</li>
+        <li>Zelle (EWS)</li>
+        <li>TCH RTP</li>
+        <li>FedNow</li>
+        <li>Check / RDC</li>
+        <li>Payrailz / BPS</li>
+      </ul>
+    </div>
+    <div class="arch-arrow">›</div>
+    <div class="arch-col hero-col">
+      <div class="arch-hdr" style="background:var(--mint)">⚡ SILVER LAYER</div>
+      <div class="arch-mono">lake.unified_transactions</div>
+      <ul class="arch-items">
+        <li>All rails, one schema</li>
+        <li>Resolved party IDs</li>
+        <li>FX / multi-currency cols</li>
+        <li>IBAN / BIC routing</li>
+        <li>On-us indicator</li>
+        <li>Block-and-key IR audit</li>
+        <li>Rail JSON extension</li>
+        <li>BQ partitioned + clustered</li>
+      </ul>
+    </div>
+    <div class="arch-arrow">›</div>
+    <div class="arch-col">
+      <div class="arch-hdr" style="background:var(--teal)">📊 OUTPUTS</div>
+      <ul class="arch-items">
+        <li>Gold analytics tables</li>
+        <li>IR quality metrics</li>
+        <li>Identity: party records</li>
+        <li>Identity: biller registry</li>
+        <li>Party relationships</li>
+        <li>Metadata / lineage</li>
+        <li>BI &amp; reporting</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCHEMAS ───────────────────────────────────────────── -->
+<hr class="rule"/>
+<div class="section" id="schemas">
+  <div class="sec-eyebrow">BIGQUERY DDL</div>
+  <div class="sec-title">Schema files</div>
+  <div class="sec-sub">All tables target GCP BigQuery with partitioning, clustering, and NOT ENFORCED constraints.</div>
+
+  <div class="schema-tabs">
+    <button class="stab active" onclick="showTab('silver')">Silver Layer</button>
+    <button class="stab" onclick="showTab('identity')">Identity</button>
+    <button class="stab" onclick="showTab('gold')">Gold</button>
+    <button class="stab" onclick="showTab('raw')">Raw</button>
+    <button class="stab" onclick="showTab('meta')">Metadata</button>
+  </div>
+
+  <div class="schema-panel" id="tab-silver">
+    <table class="col-table">
+      <thead><tr><th>COLUMN</th><th>TYPE</th><th>NOTES</th></tr></thead>
+      <tbody>
+        <tr class="highlight-row"><td><span class="badge-key">PK</span>transaction_id</td><td class="type">STRING</td><td>Vault-generated UUID</td></tr>
+        <tr><td>tenant_id</td><td class="type">STRING</td><td>FI tenant identifier</td></tr>
+        <tr><td>payment_type</td><td class="type">STRING</td><td>ACH | WIRE | CARD | ZELLE | RTP | FEDNOW | CHECK | BILLPAY</td></tr>
+        <tr><td>status</td><td class="type">STRING</td><td>SETTLED | PENDING | FAILED | RETURNED</td></tr>
+        <tr><td>direction</td><td class="type">STRING</td><td>CREDIT | DEBIT</td></tr>
+        <tr><td>settlement_amount</td><td class="type">NUMERIC</td><td>USD settlement value</td></tr>
+        <tr><td>original_amount</td><td class="type">NUMERIC</td><td>Amount in originating currency</td></tr>
+        <tr><td>original_currency_code</td><td class="type">STRING</td><td>ISO 4217</td></tr>
+        <tr><td>fx_rate</td><td class="type">NUMERIC</td><td>Rate at time of settlement</td></tr>
+        <tr><td>fx_rate_source</td><td class="type">STRING</td><td>ECB | FED | INTERNAL</td></tr>
+        <tr><td>fx_rate_timestamp</td><td class="type">TIMESTAMP</td><td>Rate capture time</td></tr>
+        <tr><td>fx_charges_borne_by</td><td class="type">STRING</td><td>OUR | BEN | SHA</td></tr>
+        <tr><td>settlement_currency_code</td><td class="type">STRING</td><td>Target settlement currency</td></tr>
+        <tr class="highlight-row"><td><span class="badge-fk">FK</span>originator_party_id</td><td class="type">STRING</td><td>→ identity.party</td></tr>
+        <tr class="highlight-row"><td><span class="badge-fk">FK</span>beneficiary_party_id</td><td class="type">STRING</td><td>→ identity.party</td></tr>
+        <tr><td>originator_block_key</td><td class="type">STRING</td><td>routing:ABA|proxy:hash|token:vault</td></tr>
+        <tr><td>match_rule</td><td class="type">STRING</td><td>EXACT_TOKEN | ROUTING_ACCT | PROXY_EXACT | NAME_ROUTING | NEW_PARTY</td></tr>
+        <tr><td>originator_swift_bic</td><td class="type">STRING</td><td>ISO 9362 BIC</td></tr>
+        <tr><td>beneficiary_swift_bic</td><td class="type">STRING</td><td>ISO 9362 BIC</td></tr>
+        <tr><td>is_on_us</td><td class="type">BOOL</td><td>Derived at ETL via ref_on_us_institutions</td></tr>
+        <tr><td>transaction_ts</td><td class="type">TIMESTAMP</td><td>PARTITION BY DATE(transaction_ts)</td></tr>
+        <tr><td>rail_json</td><td class="type">JSON</td><td>Rail-native extension fields</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="schema-panel hidden" id="tab-identity">
+    <table class="col-table">
+      <thead><tr><th>TABLE</th><th>PURPOSE</th><th>KEY COLUMNS</th></tr></thead>
+      <tbody>
+        <tr><td>identity.party</td><td>Canonical party master</td><td>party_id, party_type, display_name, created_at</td></tr>
+        <tr><td>identity.party_account</td><td>Account-to-party link</td><td>account_token, routing_number, account_type</td></tr>
+        <tr><td>identity.party_address</td><td>IBAN / BIC / address</td><td>iban_token, swift_bic, correspondent_bank_bic</td></tr>
+        <tr><td>identity.party_proxy</td><td>Phone / email tokens</td><td>proxy_token, proxy_type (PHONE|EMAIL|ALIAS)</td></tr>
+        <tr><td>identity.party_relationship</td><td>UBO, joint, biller links</td><td>parent_party_id, child_party_id, relationship_type</td></tr>
+        <tr><td>identity.biller_registry</td><td>Biller master</td><td>biller_id, biller_name, category, routing_number</td></tr>
+        <tr><td>identity.ir_audit_log</td><td>Resolution history</td><td>transaction_id, rule_applied, confidence_score</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="schema-panel hidden" id="tab-gold">
+    <table class="col-table">
+      <thead><tr><th>TABLE</th><th>GRAIN</th><th>KEY METRICS</th></tr></thead>
+      <tbody>
+        <tr><td>gold.by_payment_type</td><td>Daily × Rail × Tenant</td><td>txn_count, settled_amount, avg_fx_rate, on_us_pct</td></tr>
+        <tr><td>gold.ir_quality_daily</td><td>Daily × Rail</td><td>resolved_pct, new_party_pct, avg_confidence</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="schema-panel hidden" id="tab-raw">
+    <table class="col-table">
+      <thead><tr><th>TABLE</th><th>RAIL</th><th>NOTES</th></tr></thead>
+      <tbody>
+        <tr><td>raw.ach</td><td>ACH</td><td>NACHA standard fields + return codes</td></tr>
+        <tr><td>raw.wire</td><td>WIRE</td><td>Fedwire / SWIFT MT103 fields</td></tr>
+        <tr><td>raw.card</td><td>CARD</td><td>ISO 8583 message fields</td></tr>
+        <tr><td>raw.zelle</td><td>ZELLE</td><td>EWS clearing fields</td></tr>
+        <tr><td>raw.rtp_fednow</td><td>RTP / FEDNOW</td><td>ISO 20022 pacs.008 fields</td></tr>
+        <tr><td>raw.check_rdc</td><td>CHECK / RDC</td><td>X9 image fields + MICR line</td></tr>
+        <tr><td>raw.billpay</td><td>BILLPAY</td><td>Biller ID, payment schedule</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="schema-panel hidden" id="tab-meta">
+    <table class="col-table">
+      <thead><tr><th>TABLE</th><th>PURPOSE</th></tr></thead>
+      <tbody>
+        <tr><td>metadata.source_to_target</td><td>Column-level lineage from each source system to unified_transactions</td></tr>
+        <tr><td>ref.payment_types</td><td>Reference codes for payment_type enum</td></tr>
+        <tr><td>ref.status_codes</td><td>Reference codes for status enum</td></tr>
+        <tr><td>ref.ach_return_codes</td><td>NACHA return reason codes</td></tr>
+        <tr><td>ref.transaction_directions</td><td>CREDIT / DEBIT definitions per rail</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── ANALYTICS / VISUALS ───────────────────────────────── -->
+<hr class="rule"/>
+<div class="section" id="analytics">
+  <div class="sec-eyebrow">INTERACTIVE VISUALS</div>
+  <div class="sec-title">Explore the data model</div>
+  <div class="sec-sub">Self-contained HTML files — open in any browser, no server required.</div>
+  <div class="cards cards-3">
+
+    <a class="card link-card" href="analytics/identity_first_model.html">
+      <div class="card-header">
+        <div class="card-icon" style="background:#002E21">🕸️</div>
+        <div>
+          <div class="card-title">Identity-First Data Model</div>
+          <div class="card-type">INTERACTIVE VISUAL</div>
+        </div>
+      </div>
+      <div class="card-body">Animated transaction-to-party flow, block-and-key resolution waterfall, force-directed identity graph with hover tooltips, and 6 cross-rail SQL insight cards.</div>
+      <div class="card-footer">
+        <span class="tag mint">D3 graph</span>
+        <span class="tag mint">Animated</span>
+        <span class="tag">identity.*</span>
+        <span class="card-link">Open →</span>
+      </div>
+    </a>
+
+    <a class="card link-card" href="analytics/cross_rail_sankey.html">
+      <div class="card-header">
+        <div class="card-icon" style="background:#001E2E">📊</div>
+        <div>
+          <div class="card-title">Cross-Rail $ Flow — Sankey</div>
+          <div class="card-type">INTERACTIVE VISUAL</div>
+        </div>
+      </div>
+      <div class="card-body">D3 Sankey diagram showing inflow and outflow by payment rail. Period toggle, KPI bar (total in / out / net), hover tooltips. Drop in live BigQuery results to go live.</div>
+      <div class="card-footer">
+        <span class="tag mint">Sankey</span>
+        <span class="tag amber">Live data ready</span>
+        <span class="card-link">Open →</span>
+      </div>
+    </a>
+
+    <a class="card link-card" href="analytics/ai_ml_intelligence_first.html">
+      <div class="card-header">
+        <div class="card-icon" style="background:#1A0A2E">🧠</div>
+        <div>
+          <div class="card-title">AI / ML Intelligence First</div>
+          <div class="card-type">INTERACTIVE VISUAL</div>
+        </div>
+      </div>
+      <div class="card-body">5-stage ML pipeline, 4 use-case cards (fraud, churn, anomaly, propensity), animated feature importance chart, ML readiness scorecard, and signal catalog.</div>
+      <div class="card-footer">
+        <span class="tag mint">D3 charts</span>
+        <span class="tag">Feature store</span>
+        <span class="card-link">Open →</span>
+      </div>
+    </a>
+
+    <a class="card link-card" href="analytics/cross_rail_flow_analysis.sql">
+      <div class="card-header">
+        <div class="card-icon" style="background:#001E14">🗃️</div>
+        <div>
+          <div class="card-title">Cross-Rail Flow Analysis SQL</div>
+          <div class="card-type">BIGQUERY SQL</div>
+        </div>
+      </div>
+      <div class="card-body">4 queries: monthly inflow/outflow/net by rail, Sankey-ready pivot output, cross-rail net position pivot, and FX-only multi-currency flows.</div>
+      <div class="card-footer">
+        <span class="tag">BigQuery</span>
+        <span class="tag">4 queries</span>
+        <span class="card-link">View →</span>
+      </div>
+    </a>
+
+  </div>
+</div>
+
+<!-- ── DELIVERABLES ──────────────────────────────────────── -->
+<hr class="rule"/>
+<div class="section" id="deliverables">
+  <div class="sec-eyebrow">DELIVERABLES</div>
+  <div class="sec-title">Documents &amp; presentations</div>
+  <div class="sec-sub">All files are version-clean — no v2/v3 markers.</div>
+  <div class="cards cards-2">
+
+    <a class="card link-card" href="deliverables/JHBI_Unified_Payments_Platform.pptx">
+      <div class="card-header">
+        <div class="card-icon" style="background:#001A30">📑</div>
+        <div>
+          <div class="card-title">Unified Payments Platform Deck</div>
+          <div class="card-type">POWERPOINT  ·  7 SLIDES</div>
+        </div>
+      </div>
+      <div class="card-body">Design principles, architecture overview, key capabilities, Why Cloud, APIs &amp; pipelines, and summary. Built with react-icons, stat callouts, and decorative visuals.</div>
+      <div class="card-footer">
+        <span class="tag">.pptx</span><span class="tag mint">Icons</span><span class="tag">BigQuery</span>
+        <span class="card-link">⬇ Download</span>
+      </div>
+    </a>
+
+    <a class="card link-card" href="deliverables/JHBI_Payments_Schema_Design.pptx">
+      <div class="card-header">
+        <div class="card-icon" style="background:#001A30">📑</div>
+        <div>
+          <div class="card-title">Schema Design Deck</div>
+          <div class="card-type">POWERPOINT</div>
+        </div>
+      </div>
+      <div class="card-body">Original schema design walkthrough — medallion layers, table relationships, and design rationale.</div>
+      <div class="card-footer">
+        <span class="tag">.pptx</span>
+        <span class="card-link">⬇ Download</span>
+      </div>
+    </a>
+
+    <a class="card link-card" href="deliverables/JHBI_Unified_Payments_Design_Document.docx">
+      <div class="card-header">
+        <div class="card-icon" style="background:#001A30">📝</div>
+        <div>
+          <div class="card-title">Unified Payments Design Document</div>
+          <div class="card-type">WORD DOCUMENT</div>
+        </div>
+      </div>
+      <div class="card-body">Full technical design narrative covering schema rationale, identity resolution model, FX handling, IBAN/BIC alignment, and BigQuery implementation notes.</div>
+      <div class="card-footer">
+        <span class="tag">.docx</span>
+        <span class="card-link">⬇ Download</span>
+      </div>
+    </a>
+
+    <a class="card link-card" href="deliverables/JHBI_Source_Target_Mapping.xlsx">
+      <div class="card-header">
+        <div class="card-icon" style="background:#001A30">📊</div>
+        <div>
+          <div class="card-title">Source-to-Target Mapping</div>
+          <div class="card-type">EXCEL SPREADSHEET</div>
+        </div>
+      </div>
+      <div class="card-body">Column-level lineage from all 8 source systems to <code style="color:var(--mint);font-family:Consolas">lake.unified_transactions</code>. Includes transformation logic, data types, and nullable flags.</div>
+      <div class="card-footer">
+        <span class="tag">.xlsx</span><span class="tag">8 rails</span>
+        <span class="card-link">⬇ Download</span>
+      </div>
+    </a>
+
+  </div>
+</div>
+
+<!-- ── DESIGN PRINCIPLES ─────────────────────────────────── -->
+<hr class="rule"/>
+<div class="section" id="principles">
+  <div class="sec-eyebrow">DESIGN PRINCIPLES</div>
+  <div class="sec-title">Six principles behind every decision</div>
+  <div class="sec-sub" style="margin-bottom:16px">Not guidelines — hard constraints that shaped the schema from day one.</div>
+  <div class="principles-wrap">
+    <div class="principles">
+      <div class="principle">
+        <div class="pr-num" style="color:var(--mint)">01 — REAL-TIME</div>
+        <div class="pr-name">Real-Time by Default</div>
+        <div class="pr-body">CDC → Kafka → BigQuery streaming. Batch is a fallback, not the baseline.</div>
+      </div>
+      <div class="principle">
+        <div class="pr-num" style="color:var(--teal)">02 — IDENTITY</div>
+        <div class="pr-name">Identity-First Data Model</div>
+        <div class="pr-body">Every transaction links to a canonical party record before analytics run.</div>
+      </div>
+      <div class="principle">
+        <div class="pr-num" style="color:var(--mint)">03 — SIMPLICITY</div>
+        <div class="pr-name">Radical Simplicity = Performance</div>
+        <div class="pr-body">FX, IBAN, and IR audit fields are first-class columns — not JSON keys.</div>
+      </div>
+      <div class="principle">
+        <div class="pr-num" style="color:var(--amber)">04 — CLOUD</div>
+        <div class="pr-name">Cloud-Native Economics</div>
+        <div class="pr-body">Storage/compute separation. Pay for queries, not idle servers.</div>
+      </div>
+      <div class="principle">
+        <div class="pr-num" style="color:var(--purple)">05 — APIs</div>
+        <div class="pr-name">APIs &amp; Pipelines</div>
+        <div class="pr-body">Every layer exposes a clean, independently deployable contract.</div>
+      </div>
+      <div class="principle">
+        <div class="pr-num" style="color:var(--red)">06 — AI/ML</div>
+        <div class="pr-name">AI / ML Intelligence First</div>
+        <div class="pr-body">Structured columns and tokenized PII are purpose-built for feature engineering.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FOOTER ────────────────────────────────────────────── -->
+<footer>
+  <div class="f-left">
+    <div class="f-logo">JHBI <span>Unified Payments Platform</span></div>
+    <div>Jack Henry Banking Intelligence · 2026</div>
+  </div>
+  <div class="f-links">
+    <a href="docs/ERD.md">ERD</a>
+    <a href="docs/SCHEMA_DOCUMENTATION.md">Schema Docs</a>
+    <a href="analytics/identity_first_model.html">Identity Model</a>
+    <a href="analytics/cross_rail_sankey.html">Sankey</a>
+    <a href="analytics/ai_ml_intelligence_first.html">AI/ML</a>
+    <a href="https://github.com/MonkeyWrenchGang/jhbi_silver_design" target="_blank">GitHub ↗</a>
+  </div>
+</footer>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.schema-panel').forEach(p => p.classList.add('hidden'));
+  document.querySelectorAll('.stab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.remove('hidden');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
