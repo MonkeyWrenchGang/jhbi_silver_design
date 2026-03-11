@@ -364,8 +364,9 @@ footer a { color: var(--teal); }
     <button class="stab" onclick="showTab('identity')">Identity v3</button>
     <button class="stab" onclick="showTab('partyddl')">Party DDL</button>
     <button class="stab" onclick="showTab('railjson')">Rail JSON</button>
-    <button class="stab" onclick="showTab('gold')">Gold</button>
-    <button class="stab" onclick="showTab('raw')">Raw</button>
+    <button class="stab" onclick="showTab('gold')">Gold Layer</button>
+    <button class="stab" onclick="showTab('raw')">Raw Layer</button>
+    <button class="stab" onclick="showTab('reference')">Reference</button>
     <button class="stab" onclick="showTab('meta')">Metadata</button>
   </div>
 
@@ -394,12 +395,19 @@ footer a { color: var(--teal); }
         <tr><td colspan="3" style="background:#02081A;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;padding:8px 16px 6px">— AMOUNT / TIME / STATUS —</td></tr>
         <tr><td>amount</td><td class="type">NUMERIC NOT NULL</td><td>Transaction amount in <code style="color:var(--mint);font-size:10px">currency_code</code> currency</td></tr>
         <tr><td>currency_code</td><td class="type">STRING NOT NULL</td><td>ISO 4217 transaction currency (e.g. USD, EUR, GBP)</td></tr>
+        <tr><td>settlement_amount</td><td class="type">NUMERIC</td><td>Amount in settlement currency; NULL when no FX · v4 NEW</td></tr>
+        <tr><td>settlement_currency_code</td><td class="type">STRING</td><td>ISO 4217 settlement currency; NULL when same as currency_code · v4 NEW</td></tr>
         <tr><td>fee_amount</td><td class="type">NUMERIC</td><td>Associated fee amount (nullable)</td></tr>
         <tr><td>transaction_ts</td><td class="type">TIMESTAMP NOT NULL</td><td>Business timestamp · PARTITION BY DATE(transaction_ts)</td></tr>
         <tr><td>effective_date</td><td class="type">DATE</td><td>Effective / value date</td></tr>
         <tr><td>settlement_date</td><td class="type">DATE</td><td>Settlement date</td></tr>
         <tr><td>status</td><td class="type">STRING NOT NULL</td><td>Canonical lifecycle status · CLUSTER BY</td></tr>
         <tr><td>status_reason_code</td><td class="type">STRING</td><td>Standardized reason / return / reject code</td></tr>
+        <tr><td>return_reason_code</td><td class="type">STRING</td><td>Promoted: ACH R01-R99, ISO 20022 AC04/AG01, check NSF/STOP_PAYMENT · v4 NEW</td></tr>
+        <tr><td colspan="3" style="background:#02081A;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;padding:8px 16px 6px">— PROMOTED ANALYTICS FLAGS · v4 NEW —</td></tr>
+        <tr><td>description</td><td class="type">STRING</td><td>Promoted: ACH company_entry_description, wire OBI, Zelle memo, check memo_line, billpay memo</td></tr>
+        <tr><td>is_on_us</td><td class="type">BOOL</td><td>Promoted: TRUE when both parties at same FI tenant</td></tr>
+        <tr><td>is_recurring</td><td class="type">BOOL</td><td>Promoted: TRUE for recurring billpay, scheduled card, autopay ACH</td></tr>
         <tr><td colspan="3" style="background:#02081A;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;padding:8px 16px 6px">— PARTY REFERENCES (tokenized PII — MDM keys live in identity.*) —</td></tr>
         <tr class="highlight-row"><td><span class="badge-fk">FK</span>originator_party_id</td><td class="type">STRING</td><td>→ identity.party · resolved by block-and-key IR service</td></tr>
         <tr><td>originator_account_token</td><td class="type">STRING</td><td>Vault token for sender account (PCI)</td></tr>
@@ -663,25 +671,43 @@ footer a { color: var(--teal); }
 
   <div class="schema-panel hidden" id="tab-gold">
     <table class="col-table">
-      <thead><tr><th>TABLE</th><th>GRAIN</th><th>KEY METRICS</th></tr></thead>
+      <thead><tr><th>TABLE</th><th>GRAIN</th><th>KEY COLUMNS &amp; METRICS</th></tr></thead>
       <tbody>
-        <tr><td>gold.by_payment_type</td><td>Daily × Rail × Tenant</td><td>txn_count, settled_amount, avg_fx_rate, on_us_pct</td></tr>
-        <tr><td>gold.ir_quality_daily</td><td>Daily × Rail</td><td>resolved_pct, new_party_pct, avg_confidence</td></tr>
+        <tr><td>gold.by_payment_type</td><td>Daily × Rail × Tenant</td><td>date, tenant_id, payment_type, direction, on_us_flag, recurring_flag | inbound_count, outbound_count, on_us_count, off_us_count, return_count, recurring_count, settled_amount, avg_fx_rate, on_us_pct</td></tr>
+        <tr><td>gold.ir_quality_daily</td><td>Daily × Rail</td><td>date, payment_rail | resolved_pct, unresolved_pct, new_party_pct, avg_confidence_score, min_confidence, max_confidence, new_party_count</td></tr>
+        <tr><td>gold.cross_rail_flow_daily</td><td>Daily × Rail</td><td>date, payment_rail, direction | inflow_amount, outflow_amount, net_flow_amount, inflow_count, outflow_count</td></tr>
+        <tr><td>gold.by_channel</td><td>Daily × Rail × Channel</td><td>date, payment_rail, channel, direction | transaction_count, total_amount, avg_amount, on_us_pct</td></tr>
+        <tr><td>gold.biller_volume_daily</td><td>Daily × Biller Category × Aggregator</td><td>date, biller_category, aggregator_name | transaction_count, total_amount, avg_amount, top_billers ARRAY&lt;STRUCT&gt;</td></tr>
+        <tr><td>gold.fx_summary_daily</td><td>Daily × Currency Pair</td><td>date, original_currency, settlement_currency, fx_direction | transaction_count, volume_original, volume_settled, min_rate, max_rate, avg_rate, rate_volatility</td></tr>
+        <tr><td>gold.party_activity_daily</td><td>Daily × Party</td><td>date, party_id, party_type | transaction_count, total_amount, inbound_count, outbound_count, unique_counterparties, avg_transaction_size</td></tr>
       </tbody>
     </table>
   </div>
 
   <div class="schema-panel hidden" id="tab-raw">
     <table class="col-table">
-      <thead><tr><th>TABLE</th><th>RAIL</th><th>NOTES</th></tr></thead>
+      <thead><tr><th>TABLE</th><th>PARTITIONING &amp; CLUSTERING</th><th>KEY COLUMNS</th></tr></thead>
       <tbody>
-        <tr><td>raw.ach</td><td>ACH</td><td>NACHA standard fields + return codes</td></tr>
-        <tr><td>raw.wire</td><td>WIRE</td><td>Fedwire / SWIFT MT103 fields</td></tr>
-        <tr><td>raw.card</td><td>CARD</td><td>ISO 8583 message fields</td></tr>
-        <tr><td>raw.zelle</td><td>ZELLE</td><td>EWS clearing fields</td></tr>
-        <tr><td>raw.rtp_fednow</td><td>RTP / FEDNOW</td><td>ISO 20022 pacs.008 fields</td></tr>
-        <tr><td>raw.check_rdc</td><td>CHECK / RDC</td><td>X9 image fields + MICR line</td></tr>
-        <tr><td>raw.billpay</td><td>BILLPAY</td><td>Biller ID, payment schedule</td></tr>
+        <tr><td>raw.raw_ach</td><td>PARTITION BY DATE(created_timestamp) · CLUSTER BY tenant_id, entry_class_code, direction</td><td>ach_transaction_id, created_timestamp, company_id, entry_class_code (PPD|CCD|WEB|TEL|CTX|IAT), originator_routing_number, originator_account_token, receiver_routing_number, receiver_account_token, amount, transaction_type, trace_number, return_reason_code (R01-R99), batch_number, addenda_records, iat_details</td></tr>
+        <tr><td>raw.raw_wire</td><td>PARTITION BY DATE(initiated_timestamp)</td><td>wire_transaction_id, initiated_timestamp, imad, omad, originator_fi_swift_bic, beneficiary_fi_swift_bic, originator_routing_number, originator_account_token, receiver_routing_number, receiver_account_token, amount, wire_subtype (FEDWIRE_DOMESTIC|SWIFT_INTERNATIONAL|CHIPS), purpose_code, regulatory_reporting, foreign_exchange{ exchange_rate, original_currency_code, original_amount }</td></tr>
+        <tr><td>raw.raw_card</td><td>PARTITION BY DATE(auth_timestamp)</td><td>card_transaction_id, auth_timestamp, card_token, merchant_id, merchant_category_code (MCC), authorization_code, amount, currency_code, card_brand, card_type (DEBIT|CREDIT|PREPAID), transaction_subtype (AUTH|CAPTURE|REFUND|CHARGEBACK), cvv_result, avs_result, chargeback_details</td></tr>
+        <tr><td>raw.raw_zelle</td><td>PARTITION BY DATE(initiated_timestamp)</td><td>zelle_transaction_id, initiated_timestamp, zelle_reference_id, originator_proxy_type (EMAIL|PHONE|ZELLE_ALIAS), originator_proxy_token, beneficiary_proxy_type, beneficiary_proxy_token, amount, currency_code, transaction_subtype (SEND_MONEY|REQUEST_MONEY|REQUEST_FULFILLMENT), enrollment_status, request_for_payment_id, payment_expiry_date</td></tr>
+        <tr><td>raw.raw_rtp_fednow</td><td>PARTITION BY DATE(initiated_timestamp)</td><td>rtp_fednow_transaction_id, initiated_timestamp, rtp_or_fednow (RTP|FEDNOW), end_to_end_id, uetr, instructing_agent_routing, receiving_agent_routing, amount, currency_code, purpose_code, transaction_subtype (CREDIT_TRANSFER|REQUEST_FOR_PAYMENT|PAYMENT_RETURN), remittance_information, structured_remittance, fednow_status (RCVD|ACCP|ACWC|RJCT|ACSC), ultimate_debtor_account_token</td></tr>
+        <tr><td>raw.raw_check_rdc</td><td>PARTITION BY DATE(deposit_timestamp)</td><td>check_transaction_id, deposit_timestamp, check_number, check_date, check_amount, currency_code, payor_routing_number, payor_account_token, payee_name_token, payee_routing_number, payee_account_token, check_subtype (PAPER_CHECK|RDC_MOBILE|RDC_SCANNER|TELLER_CAPTURE), micr_line_tokens, iqv_result, front_image_id, back_image_id, clearing_house (FRB|SVPCO), return_reason_code (NSF|STOP_PAYMENT)</td></tr>
+        <tr><td>raw.raw_billpay</td><td>PARTITION BY DATE(created_timestamp)</td><td>billpay_transaction_id, created_timestamp, bill_pay_reference, biller_id, biller_name, biller_category, aggregator_name (IPAY|PAYRAILZ|BPS|CHECKFREE), delivery_method (ELECTRONIC_ACH|ELECTRONIC_REAL_TIME|PAPER_CHECK|LASER_DRAFT), biller_account_number_token, funding_account_token, amount, currency_code, scheduled_delivery_date, recurring_details{ frequency, occurrence_number, end_date }, underlying_rail (ACH|RTP|FEDNOW|CHECK), underlying_transaction_id</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="schema-panel hidden" id="tab-reference">
+    <table class="col-table">
+      <thead><tr><th>TABLE</th><th>PURPOSE &amp; CONTENT</th></tr></thead>
+      <tbody>
+        <tr><td>ref.payment_types</td><td>9 canonical payment types with rail mapping · ACH, WIRE, CARD, ZELLE, RTP, FEDNOW, CHECK, RDC, BILLPAY · Columns: payment_type (PK), payment_rail, direction_support (BOTH|INBOUND_ONLY|OUTBOUND_ONLY), description</td></tr>
+        <tr><td>ref.status_codes</td><td>15 lifecycle status codes with categories · CREATED, SUBMITTED, ACCEPTED, PENDING, CLEARED, SETTLED, POSTED, RETURNED, REJECTED, CANCELLED, DISPUTED, CHARGEDBACK · Columns: status (PK), category (PENDING|TERMINAL|EXCEPTION), description, is_terminal</td></tr>
+        <tr><td>ref.ach_return_codes</td><td>NACHA Return Codes R01–R85 · Columns: return_code (PK), return_description, return_category (ACCOUNT|AUTHORIZATION|ROUTING|FORMAT|OTHER), retry_allowed (BOOL)</td></tr>
+        <tr><td>ref.transaction_directions</td><td>INBOUND / OUTBOUND definitions per rail · Columns: direction (PK), rail_type, definition, debit_credit_mapping (per NACHA/SWIFT/ISO standards)</td></tr>
+        <tr class="highlight-row"><td>ref.on_us_institutions</td><td>Routing number → tenant mapping for on-us determination <span style="color:var(--mint);font-size:10px">▸ NEW</span> · Columns: institution_routing_number (PK), tenant_id (FK), institution_name, institution_type (BANK|CREDIT_UNION|FINTECH), effective_date, end_date (nullable)</td></tr>
       </tbody>
     </table>
   </div>
@@ -690,11 +716,9 @@ footer a { color: var(--teal); }
     <table class="col-table">
       <thead><tr><th>TABLE</th><th>PURPOSE</th></tr></thead>
       <tbody>
-        <tr><td>metadata.source_to_target</td><td>Column-level lineage from each source system to unified_transactions</td></tr>
-        <tr><td>ref.payment_types</td><td>Reference codes for payment_type enum</td></tr>
-        <tr><td>ref.status_codes</td><td>Reference codes for status enum</td></tr>
-        <tr><td>ref.ach_return_codes</td><td>NACHA return reason codes</td></tr>
-        <tr><td>ref.transaction_directions</td><td>CREDIT / DEBIT definitions per rail</td></tr>
+        <tr><td>metadata.source_to_target</td><td>Column-level lineage from each source system to unified_transactions · Maps raw → silver transformation rules</td></tr>
+        <tr><td>metadata.schema_versions</td><td>Unified schema version history with breaking changes documented</td></tr>
+        <tr><td>metadata.data_quality_rules</td><td>DQ rules engine configuration for dq_flags_json validation</td></tr>
       </tbody>
     </table>
   </div>
